@@ -99,6 +99,9 @@ class ManualGrade(BaseModel):
 
 
 def generate_exam_questions(db: Session, exam: Exam, strategy_rules: List[StrategyRule]):
+    selected_question_ids = set()
+    current_order = 0
+    
     for rule in strategy_rules:
         query = db.query(Question).filter(
             Question.question_type == rule.question_type,
@@ -108,24 +111,26 @@ def generate_exam_questions(db: Session, exam: Exam, strategy_rules: List[Strate
         if rule.difficulty:
             query = query.filter(Question.difficulty == rule.difficulty)
         
+        if selected_question_ids:
+            query = query.filter(Question.id.notin_(selected_question_ids))
+        
         questions = query.all()
         
         if len(questions) < rule.count:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"题目数量不足：{rule.question_type} 类型需要 {rule.count} 题，实际只有 {len(questions)} 题"
+                detail=f"题目数量不足：{rule.question_type} 类型（{rule.difficulty or '所有难度'}）需要 {rule.count} 题，实际只有 {len(questions)} 题可用"
             )
         
-        selected_questions = random.sample(questions, rule.count)
-        current_order = len(exam.exam_questions)
+        new_selected = random.sample(questions, rule.count)
         
-        for q in selected_questions:
+        for q in new_selected:
+            selected_question_ids.add(q.id)
             current_order += 1
             options_shuffled = None
             
             if exam.shuffle_options and q.options:
                 options = json.loads(q.options)
-                original_options = options.copy()
                 random.shuffle(options)
                 options_shuffled = json.dumps(options)
             
