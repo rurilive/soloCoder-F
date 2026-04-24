@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线考试 - 在线考试系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+        .exam-container {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="exam-container">
+        <div class="exam-header">
+            <div class="exam-title" id="examTitle">加载中...</div>
+            <div class="timer" id="timer">60:00</div>
+        </div>
+        
+        <div class="question-card" id="questionCard">
+            <div class="loading">加载题目中...</div>
+        </div>
+        
+        <div class="navigation">
+            <div>
+                <button class="btn btn-secondary" id="prevBtn" onclick="prevQuestion()">上一题</button>
+                <button class="btn btn-secondary" id="nextBtn" onclick="nextQuestion()">下一题</button>
+            </div>
+            <div class="question-nav" id="questionNav"></div>
+            <button class="btn btn-danger" onclick="submitExam()">提交试卷</button>
+        </div>
+    </div>
+    
+    <div class="monitor-warning" id="monitorWarning">
+        ⚠️ 检测到异常行为，请不要离开考试页面！
+    </div>
+    
+    <div id="fullscreenWarning" class="fullscreen-warning" style="display: none;">
+        <h2>请在全屏模式下参加考试</h2>
+        <p>为了确保考试的公平性，请在全屏模式下完成考试。</p>
+        <button class="btn btn-success" onclick="enterFullscreen()">进入全屏</button>
+    </div>
+    
+    <script src="/static/js/app.js"></script>
+    <script>
+        const examId = window.location.pathname.split('/').pop();
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let answers = {};
+        let timerInterval = null;
+        let remainingTime = 0;
+        let warningCount = 0;
+        
+        async function loadExam() {
+            const examResponse = await apiRequest(`/exams/${examId}`);
+            if (examResponse.ok) {
+                const exam = await examResponse.json();
+                document.getElementById('examTitle').textContent = exam.title;
+                remainingTime = exam.duration * 60;
+                updateTimer();
+            }
+            
+            const questionsResponse = await apiRequest(`/exams/${examId}/questions`);
+            if (questionsResponse.ok) {
+                questions = await questionsResponse.json();
+                renderQuestionNav();
+                renderQuestion();
+                
+                timerInterval = setInterval(() => {
+                    remainingTime--;
+                    updateTimer();
+                    if (remainingTime <= 0) {
+                        submitExam();
+                    }
+                }, 1000);
+            }
+            
+            setupMonitor();
+        }
+        
+        function updateTimer() {
+            const minutes = Math.floor(remainingTime / 60);
+            const seconds = remainingTime % 60;
+            const timerEl = document.getElementById('timer');
+            timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            
+            if (remainingTime <= 300) {
+                timerEl.classList.add('warning');
+            }
+        }
+        
+        function renderQuestionNav() {
+            const nav = document.getElementById('questionNav');
+            nav.innerHTML = questions.map((q, index) => `
+                <button onclick="goToQuestion(${index})" id="nav-${index}">${index + 1}</button>
+            `).join('');
+        }
+        
+        function renderQuestion() {
+            const q = questions[currentQuestionIndex];
+            const card = document.getElementById('questionCard');
+            
+            let optionsHtml = '';
+            if (q.question_type === 'single_choice' || q.question_type === 'multiple_choice') {
+                const inputType = q.question_type === 'single_choice' ? 'radio' : 'checkbox';
+                const inputName = `question-${q.exam_question_id}`;
+                
+                optionsHtml = '<div class="options">';
+                if (q.options) {
+                    q.options.forEach((option, index) => {
+                        const label = String.fromCharCode(65 + index);
+                        const isChecked = answers[q.exam_question_id]?.includes(label);
+                        optionsHtml += `
+                            <div class="option ${isChecked ? 'selected' : ''}" onclick="selectOption(this, '${label}')">
+                                <input type="${inputType}" name="${inputName}" value="${label}" ${isChecked ? 'checked' : ''}>
+                                <label>${label}. ${option}</label>
+                            </div>
+                        `;
+                    });
+                }
+                optionsHtml += '</div>';
+            } else if (q.question_type === 'true_false') {
+                optionsHtml = `
+                    <div class="options">
+                        <div class="option ${answers[q.exam_question_id] === 'true' ? 'selected' : ''}" onclick="selectTrueFalse(this, 'true')">
+                            <input type="radio" name="tf-${q.exam_question_id}" value="true" ${answers[q.exam_question_id] === 'true' ? 'checked' : ''}>
+                            <label>正确</label>
+                        </div>
+                        <div class="option ${answers[q.exam_question_id] === 'false' ? 'selected' : ''}" onclick="selectTrueFalse(this, 'false')">
+                            <input type="radio" name="tf-${q.exam_question_id}" value="false" ${answers[q.exam_question_id] === 'false' ? 'checked' : ''}>
+                            <label>错误</label>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const savedAnswer = answers[q.exam_question_id] || '';
+                optionsHtml = `
+                    <textarea class="text-answer" id="textAnswer" placeholder="请输入您的答案..." onchange="saveTextAnswer()">${savedAnswer}</textarea>
+                `;
+            }
+            
+            card.innerHTML = `
+                <span class="question-number">第 ${currentQuestionIndex + 1} 题 / 共 ${questions.length} 题</span>
+                <div class="question-text">${q.question_text}</div>
+                <div style="margin-bottom: 15px; color: #666;">
+                    <span class="tag ${getDifficultyTag(q.difficulty)}">${getQuestionTypeText(q.question_type)}</span>
+                    <span style="margin-left: 10px;">分值: ${q.points}分</span>
+                </div>
+                ${optionsHtml}
+            `;
+            
+            updateNavButtons();
+            updateNavStyles();
+        }
+        
+        function selectOption(element, label) {
+            const q = questions[currentQuestionIndex];
+            const input = element.querySelector('input');
+            
+            if (q.question_type === 'single_choice') {
+                answers[q.exam_question_id] = label;
+                element.parentElement.querySelectorAll('.option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                element.classList.add('selected');
+            } else {
+                if (!answers[q.exam_question_id]) {
+                    answers[q.exam_question_id] = [];
+                }
+                
+                if (element.classList.contains('selected')) {
+                    element.classList.remove('selected');
+                    input.checked = false;
+                    answers[q.exam_question_id] = answers[q.exam_question_id].filter(l => l !== label);
+                } else {
+                    element.classList.add('selected');
+                    input.checked = true;
+                    if (!answers[q.exam_question_id].includes(label)) {
+                        answers[q.exam_question_id].push(label);
+                    }
+                }
+            }
+            updateNavStyles();
+        }
+        
+        function selectTrueFalse(element, value) {
+            const q = questions[currentQuestionIndex];
+            answers[q.exam_question_id] = value;
+            element.parentElement.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            updateNavStyles();
+        }
+        
+        function saveTextAnswer() {
+            const q = questions[currentQuestionIndex];
+            const textarea = document.getElementById('textAnswer');
+            answers[q.exam_question_id] = textarea.value;
+            updateNavStyles();
+        }
+        
+        function updateNavButtons() {
+            document.getElementById('prevBtn').style.display = currentQuestionIndex === 0 ? 'none' : 'inline-block';
+            document.getElementById('nextBtn').style.display = currentQuestionIndex === questions.length - 1 ? 'none' : 'inline-block';
+        }
+        
+        function updateNavStyles() {
+            questions.forEach((q, index) => {
+                const btn = document.getElementById(`nav-${index}`);
+                btn.classList.remove('current', 'answered');
+                
+                if (index === currentQuestionIndex) {
+                    btn.classList.add('current');
+                }
+                
+                if (answers[q.exam_question_id] && (
+                    (typeof answers[q.exam_question_id] === 'string' && answers[q.exam_question_id].length > 0) ||
+                    (Array.isArray(answers[q.exam_question_id]) && answers[q.exam_question_id].length > 0)
+                )) {
+                    btn.classList.add('answered');
+                }
+            });
+        }
+        
+        function goToQuestion(index) {
+            const q = questions[currentQuestionIndex];
+            if (q && (q.question_type === 'fill_blank' || q.question_type === 'short_answer' || q.question_type === 'essay')) {
+                const textarea = document.getElementById('textAnswer');
+                if (textarea) {
+                    answers[q.exam_question_id] = textarea.value;
+                }
+            }
+            
+            currentQuestionIndex = index;
+            renderQuestion();
+        }
+        
+        function nextQuestion() {
+            if (currentQuestionIndex < questions.length - 1) {
+                goToQuestion(currentQuestionIndex + 1);
+            }
+        }
+        
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                goToQuestion(currentQuestionIndex - 1);
+            }
+        }
+        
+        async function submitExam() {
+            if (confirm('确定要提交试卷吗？提交后将无法修改答案。')) {
+                clearInterval(timerInterval);
+                
+                const q = questions[currentQuestionIndex];
+                if (q && (q.question_type === 'fill_blank' || q.question_type === 'short_answer' || q.question_type === 'essay')) {
+                    const textarea = document.getElementById('textAnswer');
+                    if (textarea) {
+                        answers[q.exam_question_id] = textarea.value;
+                    }
+                }
+                
+                const submitData = [];
+                questions.forEach(q => {
+                    let answerText = '';
+                    if (Array.isArray(answers[q.exam_question_id])) {
+                        answerText = answers[q.exam_question_id].sort().join('');
+                    } else if (answers[q.exam_question_id]) {
+                        answerText = answers[q.exam_question_id];
+                    }
+                    
+                    submitData.push({
+                        exam_question_id: q.exam_question_id,
+                        answer_text: answerText
+                    });
+                });
+                
+                const response = await apiRequest(`/exams/${examId}/submit`, {
+                    method: 'POST',
+                    body: JSON.stringify(submitData)
+                });
+                
+                if (response.ok) {
+                    showAlert('试卷提交成功！', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/results';
+                    }, 1500);
+                } else {
+                    showAlert('提交失败，请重试', 'danger');
+                }
+            }
+        }
+        
+        function setupMonitor() {
+            let isFullscreen = document.fullscreenElement !== null;
+            
+            if (!isFullscreen) {
+                document.getElementById('fullscreenWarning').style.display = 'flex';
+            }
+            
+            document.addEventListener('fullscreenchange', () => {
+                isFullscreen = document.fullscreenElement !== null;
+                if (!isFullscreen) {
+                    document.getElementById('fullscreenWarning').style.display = 'flex';
+                    recordMonitorEvent('fullscreen_exit');
+                    showMonitorWarning();
+                } else {
+                    document.getElementById('fullscreenWarning').style.display = 'none';
+                }
+            });
+            
+            window.addEventListener('blur', () => {
+                recordMonitorEvent('window_blur');
+                showMonitorWarning();
+            });
+            
+            window.addEventListener('focus', () => {
+                recordMonitorEvent('window_focus');
+            });
+            
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    recordMonitorEvent('visibility_hidden');
+                    showMonitorWarning();
+                } else {
+                    recordMonitorEvent('visibility_visible');
+                }
+            });
+            
+            document.addEventListener('copy', (e) => {
+                e.preventDefault();
+                recordMonitorEvent('copy_detected');
+                showMonitorWarning();
+            });
+            
+            document.addEventListener('paste', (e) => {
+                e.preventDefault();
+                recordMonitorEvent('paste_detected');
+                showMonitorWarning();
+            });
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'F11' || (e.key === 'Escape' && document.fullscreenElement)) {
+                    e.preventDefault();
+                }
+                
+                if ((e.ctrlKey || e.metaKey) && ['s', 'p', 'w', 't'].includes(e.key.toLowerCase())) {
+                    e.preventDefault();
+                }
+            });
+            
+            document.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
+        }
+        
+        function enterFullscreen() {
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+            } else if (document.documentElement.webkitRequestFullscreen) {
+                document.documentElement.webkitRequestFullscreen();
+            } else if (document.documentElement.msRequestFullscreen) {
+                document.documentElement.msRequestFullscreen();
+            }
+        }
+        
+        async function recordMonitorEvent(eventType) {
+            await apiRequest('/monitor/event', {
+                method: 'POST',
+                body: JSON.stringify({
+                    exam_id: parseInt(examId),
+                    event_type: eventType
+                })
+            });
+        }
+        
+        function showMonitorWarning() {
+            warningCount++;
+            const warningEl = document.getElementById('monitorWarning');
+            warningEl.classList.add('show');
+            
+            setTimeout(() => {
+                warningEl.classList.remove('show');
+            }, 3000);
+        }
+        
+        loadExam();
+    </script>
+</body>
+</html>

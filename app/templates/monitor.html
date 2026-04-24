@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考试监控 - 在线考试系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/dashboard" class="navbar-brand">在线考试系统</a>
+            <div class="navbar-nav">
+                <a href="/dashboard" class="nav-link">仪表板</a>
+                <a href="/questions" class="nav-link" data-role="teacher">题库管理</a>
+                <a href="/exams" class="nav-link active">考试管理</a>
+                <a href="/results" class="nav-link">成绩查询</a>
+                <a href="/users" class="nav-link" data-role="admin">用户管理</a>
+            </div>
+            <div id="userInfo" class="user-info"></div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2 id="examTitle">考试监控</h2>
+                <button class="btn btn-secondary" onclick="location.href='/exams'">返回考试列表</button>
+            </div>
+            <div class="card-body">
+                <div id="monitorSummary">
+                    <div class="loading">加载中...</div>
+                </div>
+                
+                <div style="margin-top: 30px;">
+                    <h3>监控记录</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>用户</th>
+                                <th>事件类型</th>
+                                <th>IP地址</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monitorRecords">
+                            <tr>
+                                <td colspan="4" class="loading">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/app.js"></script>
+    <script>
+        const examId = window.location.pathname.split('/').pop();
+        
+        async function loadMonitor() {
+            const examResponse = await apiRequest(`/exams/${examId}`);
+            if (examResponse.ok) {
+                const exam = await examResponse.json();
+                document.getElementById('examTitle').textContent = `监控: ${exam.title}`;
+            }
+            
+            const summaryResponse = await apiRequest(`/monitor/exam/${examId}/summary`);
+            const summaryDiv = document.getElementById('monitorSummary');
+            
+            if (summaryResponse.ok) {
+                const summary = await summaryResponse.json();
+                
+                summaryDiv.innerHTML = `
+                    <div class="stats-grid" style="margin-bottom: 20px;">
+                        <div class="stat-card">
+                            <h3>总监控事件</h3>
+                            <div class="value">${summary.total_events}</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>参与用户数</h3>
+                            <div class="value">${summary.total_users}</div>
+                        </div>
+                    </div>
+                    
+                    ${summary.suspicious_users && summary.suspicious_users.length > 0 ? `
+                        <div class="alert alert-warning">
+                            <strong>⚠️ 可疑用户检测</strong>
+                            <ul style="margin-top: 10px;">
+                                ${summary.suspicious_users.map(u => `
+                                    <li>${u.real_name || u.username} - 异常事件: ${u.event_count}次</li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    ${summary.event_type_summary && Object.keys(summary.event_type_summary).length > 0 ? `
+                        <div style="margin-top: 20px;">
+                            <h4>事件类型统计</h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px;">
+                                ${Object.entries(summary.event_type_summary).map(([type, count]) => `
+                                    <div class="tag tag-medium" style="padding: 10px 15px; font-size: 14px;">
+                                        ${getMonitorEventTypeText(type)}: ${count}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                `;
+            }
+            
+            const recordsResponse = await apiRequest(`/monitor/exam/${examId}`);
+            const recordsTbody = document.getElementById('monitorRecords');
+            
+            if (recordsResponse.ok) {
+                const records = await recordsResponse.json();
+                
+                if (records.length === 0) {
+                    recordsTbody.innerHTML = '<tr><td colspan="4" class="empty-state"><h3>暂无监控记录</h3></td></tr>';
+                } else {
+                    recordsTbody.innerHTML = records.map(r => `
+                        <tr>
+                            <td>${formatDate(r.timestamp)}</td>
+                            <td>${r.user_id}</td>
+                            <td><span class="tag tag-hard">${getMonitorEventTypeText(r.event_type)}</span></td>
+                            <td>${r.ip_address || '-'}</td>
+                        </tr>
+                    `).join('');
+                }
+            }
+        }
+        
+        loadMonitor();
+        
+        setInterval(loadMonitor, 30000);
+    </script>
+</body>
+</html>

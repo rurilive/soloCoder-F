@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考试管理 - 在线考试系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/dashboard" class="navbar-brand">在线考试系统</a>
+            <div class="navbar-nav">
+                <a href="/dashboard" class="nav-link">仪表板</a>
+                <a href="/questions" class="nav-link" data-role="teacher">题库管理</a>
+                <a href="/exams" class="nav-link active">考试管理</a>
+                <a href="/results" class="nav-link">成绩查询</a>
+                <a href="/users" class="nav-link" data-role="admin">用户管理</a>
+            </div>
+            <div id="userInfo" class="user-info"></div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2>考试列表</h2>
+                <button class="btn" data-role="teacher" onclick="showModal('addExamModal')">创建考试</button>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>考试名称</th>
+                            <th>科目</th>
+                            <th>时长</th>
+                            <th>总分</th>
+                            <th>及格分</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="examsTable">
+                        <tr>
+                            <td colspan="7" class="loading">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 创建考试模态框 -->
+    <div id="addExamModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>创建考试</h3>
+                <button class="close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="examForm">
+                    <div class="form-group">
+                        <label>考试名称 *</label>
+                        <input type="text" id="examTitle" required placeholder="请输入考试名称">
+                    </div>
+                    <div class="form-group">
+                        <label>考试描述</label>
+                        <textarea id="examDescription" rows="2" placeholder="考试描述"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>科目 *</label>
+                        <input type="text" id="examSubject" required placeholder="如：数学、英语">
+                    </div>
+                    <div class="form-group">
+                        <label>考试时长（分钟）</label>
+                        <input type="number" id="examDuration" value="60" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>总分</label>
+                        <input type="number" id="examTotalPoints" value="100" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>及格分数</label>
+                        <input type="number" id="examPassScore" value="60" min="0">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>选项</label>
+                        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="shuffleQuestions"> 题目顺序随机
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="shuffleOptions"> 选项顺序随机
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="allowReview" checked> 允许查看答案
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="showScore" checked> 显示成绩
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>组卷策略</label>
+                        <div id="strategyRules">
+                            <div class="strategy-rule" style="border: 1px solid #e1e5e9; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                                    <div style="flex: 1; min-width: 150px;">
+                                        <label>题型</label>
+                                        <select class="rule-type" style="width: 100%;">
+                                            <option value="single_choice">单选题</option>
+                                            <option value="multiple_choice">多选题</option>
+                                            <option value="true_false">判断题</option>
+                                            <option value="fill_blank">填空题</option>
+                                            <option value="short_answer">简答题</option>
+                                            <option value="essay">论述题</option>
+                                        </select>
+                                    </div>
+                                    <div style="flex: 1; min-width: 150px;">
+                                        <label>难度</label>
+                                        <select class="rule-difficulty" style="width: 100%;">
+                                            <option value="">所有难度</option>
+                                            <option value="easy">简单</option>
+                                            <option value="medium">中等</option>
+                                            <option value="hard">困难</option>
+                                        </select>
+                                    </div>
+                                    <div style="flex: 1; min-width: 100px;">
+                                        <label>题数</label>
+                                        <input type="number" class="rule-count" value="5" min="1" style="width: 100%;">
+                                    </div>
+                                    <div style="flex: 1; min-width: 100px;">
+                                        <label>每题分数</label>
+                                        <input type="number" class="rule-points" value="2" min="1" style="width: 100%;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary" style="margin-top: 10px;" onclick="addStrategyRule()">+ 添加规则</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('addExamModal')">取消</button>
+                <button class="btn" onclick="saveExam()">创建考试</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/app.js"></script>
+    <script>
+        function addStrategyRule() {
+            const container = document.getElementById('strategyRules');
+            const template = container.querySelector('.strategy-rule').cloneNode(true);
+            container.appendChild(template);
+        }
+        
+        async function loadExams() {
+            const response = await apiRequest('/exams');
+            const tbody = document.getElementById('examsTable');
+            const isTeacher_ = isTeacher();
+            
+            if (response.ok) {
+                const exams = await response.json();
+                
+                if (exams.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><h3>暂无考试</h3><p>点击上方按钮创建考试</p></td></tr>';
+                } else {
+                    tbody.innerHTML = exams.map(exam => `
+                        <tr>
+                            <td>${exam.title}</td>
+                            <td>${exam.subject}</td>
+                            <td>${exam.duration} 分钟</td>
+                            <td>${exam.total_points}分</td>
+                            <td>${exam.pass_score}分</td>
+                            <td><span class="tag ${exam.status === 'published' ? 'tag-easy' : exam.status === 'draft' ? 'tag-medium' : 'tag-hard'}">${getExamStatusText(exam.status)}</span></td>
+                            <td>
+                                <div class="actions">
+                                    ${exam.status === 'published' ? 
+                                        `<a href="/exam/${exam.id}" class="btn btn-success">参加考试</a>` : 
+                                        ''
+                                    }
+                                    ${isTeacher_ && exam.status === 'draft' ? 
+                                        `<button class="btn" onclick="publishExam(${exam.id})">发布</button>
+                                         <button class="btn btn-danger" onclick="deleteExam(${exam.id})">删除</button>` : 
+                                        ''
+                                    }
+                                    ${isTeacher_ && exam.status === 'published' ? 
+                                        `<a href="/monitor/${exam.id}" class="btn btn-secondary">监控</a>` : 
+                                        ''
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } else {
+                tbody.innerHTML = '<tr><td colspan="7" class="alert alert-danger">加载失败</td></tr>';
+            }
+        }
+        
+        async function saveExam() {
+            const rules = [];
+            document.querySelectorAll('.strategy-rule').forEach(rule => {
+                const type = rule.querySelector('.rule-type').value;
+                const difficulty = rule.querySelector('.rule-difficulty').value;
+                const count = parseInt(rule.querySelector('.rule-count').value);
+                const points = parseInt(rule.querySelector('.rule-points').value);
+                
+                rules.push({
+                    question_type: type,
+                    difficulty: difficulty || null,
+                    count: count,
+                    points: points
+                });
+            });
+            
+            const data = {
+                title: document.getElementById('examTitle').value,
+                description: document.getElementById('examDescription').value || null,
+                subject: document.getElementById('examSubject').value,
+                duration: parseInt(document.getElementById('examDuration').value),
+                total_points: parseInt(document.getElementById('examTotalPoints').value),
+                pass_score: parseInt(document.getElementById('examPassScore').value),
+                shuffle_questions: document.getElementById('shuffleQuestions').checked,
+                shuffle_options: document.getElementById('shuffleOptions').checked,
+                allow_review: document.getElementById('allowReview').checked,
+                show_score: document.getElementById('showScore').checked,
+                strategy_rules: rules
+            };
+            
+            const response = await apiRequest('/exams', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                hideModal('addExamModal');
+                showAlert('考试创建成功', 'success');
+                loadExams();
+                document.getElementById('examForm').reset();
+            } else {
+                const error = await response.json();
+                showAlert(error.detail || '创建失败', 'danger');
+            }
+        }
+        
+        async function publishExam(id) {
+            if (!confirm('确定要发布这个考试吗？发布后将无法修改。')) return;
+            
+            const response = await apiRequest(`/exams/${id}/publish`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                showAlert('考试发布成功', 'success');
+                loadExams();
+            } else {
+                const error = await response.json();
+                showAlert(error.detail || '发布失败', 'danger');
+            }
+        }
+        
+        async function deleteExam(id) {
+            if (!confirm('确定要删除这个考试吗？')) return;
+            
+            const response = await apiRequest(`/exams/${id}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                showAlert('考试删除成功', 'success');
+                loadExams();
+            } else {
+                showAlert('删除失败', 'danger');
+            }
+        }
+        
+        loadExams();
+    </script>
+</body>
+</html>

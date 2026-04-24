@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成绩查询 - 在线考试系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/dashboard" class="navbar-brand">在线考试系统</a>
+            <div class="navbar-nav">
+                <a href="/dashboard" class="nav-link">仪表板</a>
+                <a href="/questions" class="nav-link" data-role="teacher">题库管理</a>
+                <a href="/exams" class="nav-link">考试管理</a>
+                <a href="/results" class="nav-link active">成绩查询</a>
+                <a href="/users" class="nav-link" data-role="admin">用户管理</a>
+            </div>
+            <div id="userInfo" class="user-info"></div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2>考试成绩</h2>
+            </div>
+            <div class="card-body">
+                <div id="resultsContent">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/app.js"></script>
+    <script>
+        async function loadResults() {
+            const examsResponse = await apiRequest('/exams');
+            const content = document.getElementById('resultsContent');
+            const isTeacher_ = isTeacher();
+            
+            if (!examsResponse.ok) {
+                content.innerHTML = '<div class="alert alert-danger">加载失败</div>';
+                return;
+            }
+            
+            const exams = await examsResponse.json();
+            const publishedExams = exams.filter(e => e.status === 'published');
+            
+            if (publishedExams.length === 0) {
+                content.innerHTML = '<div class="empty-state"><h3>暂无考试</h3><p>请等待教师发布考试</p></div>';
+                return;
+            }
+            
+            let html = '';
+            
+            for (const exam of publishedExams) {
+                const resultsResponse = await apiRequest(`/exams/${exam.id}/results`);
+                if (resultsResponse.ok) {
+                    const results = await resultsResponse.json();
+                    
+                    if (isTeacher_) {
+                        html += `
+                            <div class="result-card">
+                                <h3>${exam.title}</h3>
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>用户名</th>
+                                            <th>姓名</th>
+                                            <th>得分</th>
+                                            <th>总分</th>
+                                            <th>是否及格</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${results.results && results.results.length > 0 ? 
+                                            results.results.map(r => `
+                                                <tr>
+                                                    <td>${r.username || '-'}</td>
+                                                    <td>${r.real_name || '-'}</td>
+                                                    <td>${r.score}</td>
+                                                    <td>${r.max_score}</td>
+                                                    <td>
+                                                        <span class="tag ${r.is_passed ? 'tag-easy' : 'tag-hard'}">
+                                                            ${r.is_passed ? '及格' : '不及格'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            `).join('') :
+                                            '<tr><td colspan="5" style="text-align: center; color: #666;">暂无学生提交</td></tr>'
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                    } else {
+                        const scoreDisplayClass = results.is_passed ? 'passed' : 'failed';
+                        html += `
+                            <div class="result-card">
+                                <h3>${exam.title}</h3>
+                                <div class="score-display ${scoreDisplayClass}">
+                                    <div class="score">${results.total_score || 0}</div>
+                                    <div class="max-score">/ ${results.max_score || exam.total_points}</div>
+                                    <div style="margin-top: 20px;">
+                                        <span class="tag ${results.is_passed ? 'tag-easy' : 'tag-hard'}">
+                                            ${results.is_passed ? '恭喜，您已通过！' : '很遗憾，未能通过'}
+                                        </span>
+                                    </div>
+                                    <div style="margin-top: 15px; color: #666;">
+                                        及格分数: ${exam.pass_score}分
+                                    </div>
+                                </div>
+                                
+                                ${results.answers && results.answers.length > 0 ? `
+                                    <h4 style="margin-top: 30px; margin-bottom: 15px;">答题详情</h4>
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>状态</th>
+                                                <th>得分</th>
+                                                <th>教师评语</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${results.answers.map((a, idx) => `
+                                                <tr>
+                                                    <td>
+                                                        <span class="tag ${a.is_correct ? 'tag-easy' : 'tag-hard'}">
+                                                            第${idx + 1}题
+                                                        </span>
+                                                    </td>
+                                                    <td>${a.total_score || 0}分</td>
+                                                    <td>${a.grader_comment || '-'}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                ` : ''}
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            content.innerHTML = html || '<div class="empty-state"><h3>暂无成绩</h3><p>请先参加考试</p></div>';
+        }
+        
+        loadResults();
+    </script>
+</body>
+</html>

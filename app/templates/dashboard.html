@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仪表板 - 在线考试系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/dashboard" class="navbar-brand">在线考试系统</a>
+            <div class="navbar-nav">
+                <a href="/dashboard" class="nav-link active">仪表板</a>
+                <a href="/questions" class="nav-link" data-role="teacher">题库管理</a>
+                <a href="/exams" class="nav-link">考试管理</a>
+                <a href="/results" class="nav-link">成绩查询</a>
+                <a href="/users" class="nav-link" data-role="admin">用户管理</a>
+            </div>
+            <div id="userInfo" class="user-info"></div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="dashboard">
+            <h1>欢迎回来</h1>
+            
+            <div class="stats-grid">
+                <div class="stat-card" data-role="teacher">
+                    <h3>题库数量</h3>
+                    <div class="value" id="questionCount">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>可用考试</h3>
+                    <div class="value" id="examCount">-</div>
+                </div>
+                <div class="stat-card" data-role="teacher">
+                    <h3>已发布考试</h3>
+                    <div class="value" id="publishedCount">-</div>
+                </div>
+                <div class="stat-card" data-role="student">
+                    <h3>待参加考试</h3>
+                    <div class="value" id="pendingCount">-</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2>快速操作</h2>
+                </div>
+                <div class="card-body">
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <a href="/questions" class="btn" data-role="teacher">管理题库</a>
+                        <a href="/exams" class="btn">查看考试</a>
+                        <a href="/results" class="btn btn-success">查看成绩</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card" style="margin-top: 20px;">
+                <div class="card-header">
+                    <h2>最近考试</h2>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>考试名称</th>
+                                <th>科目</th>
+                                <th>时长</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentExams">
+                            <tr>
+                                <td colspan="5" class="loading">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/app.js"></script>
+    <script>
+        async function loadDashboard() {
+            const user = getCurrentUser();
+            
+            try {
+                const examsResponse = await apiRequest('/exams');
+                if (examsResponse.ok) {
+                    const exams = await examsResponse.json();
+                    
+                    document.getElementById('examCount').textContent = exams.length;
+                    
+                    const published = exams.filter(e => e.status === 'published');
+                    if (document.getElementById('publishedCount')) {
+                        document.getElementById('publishedCount').textContent = published.length;
+                    }
+                    
+                    const tbody = document.getElementById('recentExams');
+                    if (exams.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><h3>暂无考试</h3><p>请等待教师发布考试</p></td></tr>';
+                    } else {
+                        tbody.innerHTML = exams.slice(0, 5).map(exam => `
+                            <tr>
+                                <td>${exam.title}</td>
+                                <td>${exam.subject}</td>
+                                <td>${exam.duration} 分钟</td>
+                                <td><span class="tag ${exam.status === 'published' ? 'tag-easy' : 'tag-medium'}">${getExamStatusText(exam.status)}</span></td>
+                                <td>
+                                    <div class="actions">
+                                        ${exam.status === 'published' ? 
+                                            `<a href="/exam/${exam.id}" class="btn btn-success">参加考试</a>` : 
+                                            `<span class="tag tag-medium">${getExamStatusText(exam.status)}</span>`
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+                
+                if (isTeacher()) {
+                    const questionsResponse = await apiRequest('/questions');
+                    if (questionsResponse.ok) {
+                        const questions = await questionsResponse.json();
+                        if (document.getElementById('questionCount')) {
+                            document.getElementById('questionCount').textContent = questions.length;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
+            }
+        }
+        
+        loadDashboard();
+    </script>
+</body>
+</html>

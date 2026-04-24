@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - 在线考试系统</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="/dashboard" class="navbar-brand">在线考试系统</a>
+            <div class="navbar-nav">
+                <a href="/dashboard" class="nav-link">仪表板</a>
+                <a href="/questions" class="nav-link" data-role="teacher">题库管理</a>
+                <a href="/exams" class="nav-link">考试管理</a>
+                <a href="/results" class="nav-link">成绩查询</a>
+                <a href="/users" class="nav-link active" data-role="admin">用户管理</a>
+            </div>
+            <div id="userInfo" class="user-info"></div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2>用户列表</h2>
+                <button class="btn" onclick="showModal('addUserModal')">添加用户</button>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>姓名</th>
+                            <th>邮箱</th>
+                            <th>角色</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTable">
+                        <tr>
+                            <td colspan="7" class="loading">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加用户模态框 -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>添加用户</h3>
+                <button class="close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <div class="form-group">
+                        <label>用户名 *</label>
+                        <input type="text" id="newUsername" required placeholder="请输入用户名">
+                    </div>
+                    <div class="form-group">
+                        <label>密码 *</label>
+                        <input type="password" id="newPassword" required placeholder="请输入密码">
+                    </div>
+                    <div class="form-group">
+                        <label>姓名</label>
+                        <input type="text" id="newRealName" placeholder="请输入真实姓名">
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="newEmail" placeholder="请输入邮箱">
+                    </div>
+                    <div class="form-group">
+                        <label>角色</label>
+                        <select id="newRole">
+                            <option value="student">学生</option>
+                            <option value="teacher">教师</option>
+                            <option value="admin">管理员</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('addUserModal')">取消</button>
+                <button class="btn" onclick="saveUser()">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/app.js"></script>
+    <script>
+        async function loadUsers() {
+            const response = await apiRequest('/users/');
+            const tbody = document.getElementById('usersTable');
+            
+            if (response.ok) {
+                const users = await response.json();
+                
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><h3>暂无用户</h3></td></tr>';
+                } else {
+                    const currentUser = getCurrentUser();
+                    tbody.innerHTML = users.map(u => `
+                        <tr>
+                            <td>${u.id}</td>
+                            <td>${u.username}</td>
+                            <td>${u.real_name || '-'}</td>
+                            <td>${u.email || '-'}</td>
+                            <td><span class="tag ${u.role === 'admin' ? 'tag-hard' : u.role === 'teacher' ? 'tag-medium' : 'tag-easy'}">
+                                ${u.role === 'admin' ? '管理员' : u.role === 'teacher' ? '教师' : '学生'}
+                            </span></td>
+                            <td>${formatDate(u.created_at)}</td>
+                            <td>
+                                <div class="actions">
+                                    ${u.id === currentUser?.id ? 
+                                        '<span class="tag tag-medium">当前用户</span>' : 
+                                        `<button class="btn btn-danger" onclick="deleteUser(${u.id})">删除</button>`
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } else {
+                tbody.innerHTML = '<tr><td colspan="7" class="alert alert-danger">加载失败</td></tr>';
+            }
+        }
+        
+        async function saveUser() {
+            const username = document.getElementById('newUsername').value;
+            const password = document.getElementById('newPassword').value;
+            const realName = document.getElementById('newRealName').value;
+            const email = document.getElementById('newEmail').value;
+            const role = document.getElementById('newRole').value;
+            
+            const response = await apiRequest(`/users/?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&role=${role}&real_name=${encodeURIComponent(realName || '')}&email=${encodeURIComponent(email || '')}`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                hideModal('addUserModal');
+                showAlert('用户添加成功', 'success');
+                loadUsers();
+                document.getElementById('userForm').reset();
+            } else {
+                const error = await response.json();
+                showAlert(error.detail || '添加失败', 'danger');
+            }
+        }
+        
+        async function deleteUser(id) {
+            if (!confirm('确定要删除这个用户吗？')) return;
+            
+            const response = await apiRequest(`/users/${id}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                showAlert('用户删除成功', 'success');
+                loadUsers();
+            } else {
+                const error = await response.json();
+                showAlert(error.detail || '删除失败', 'danger');
+            }
+        }
+        
+        loadUsers();
+    </script>
+</body>
+</html>
