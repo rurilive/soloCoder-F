@@ -304,17 +304,28 @@ def get_exam_questions(
     if not exam:
         raise HTTPException(status_code=404, detail="考试不存在")
     
+    exam_questions = db.query(ExamQuestion).filter(
+        ExamQuestion.exam_id == exam_id
+    ).order_by(ExamQuestion.question_order).all()
+    
+    if not exam_questions:
+        raise HTTPException(status_code=400, detail="该考试没有题目")
+    
     if current_user.role == UserRole.STUDENT:
         if exam.status != ExamStatus.PUBLISHED:
             raise HTTPException(status_code=403, detail="无权访问该考试")
         
+        existing_answer_ids = set()
         existing_answers = db.query(ExamAnswer).filter(
             ExamAnswer.exam_id == exam_id,
             ExamAnswer.user_id == current_user.id
-        ).first()
+        ).all()
         
-        if not existing_answers:
-            for eq in exam.exam_questions:
+        for answer in existing_answers:
+            existing_answer_ids.add(answer.exam_question_id)
+        
+        for eq in exam_questions:
+            if eq.id not in existing_answer_ids:
                 answer = ExamAnswer(
                     exam_id=exam_id,
                     exam_question_id=eq.id,
@@ -322,11 +333,8 @@ def get_exam_questions(
                     started_at=datetime.utcnow()
                 )
                 db.add(answer)
-            db.commit()
-    
-    exam_questions = db.query(ExamQuestion).filter(
-        ExamQuestion.exam_id == exam_id
-    ).order_by(ExamQuestion.question_order).all()
+        
+        db.commit()
     
     if exam.shuffle_questions and current_user.role == UserRole.STUDENT:
         random.shuffle(exam_questions)
@@ -368,38 +376,64 @@ def submit_exam(
     if exam.status != ExamStatus.PUBLISHED:
         raise HTTPException(status_code=400, detail="考试未发布")
     
+    exam_question_ids = set()
+    exam_questions = db.query(ExamQuestion).filter(
+        ExamQuestion.exam_id == exam_id
+    ).all()
+    
+    exam_question_map = {}
+    for eq in exam_questions:
+        exam_question_ids.add(eq.id)
+        exam_question_map[eq.id] = eq
+    
     for answer_data in answers:
-        exam_answer = db.query(ExamAnswer).filter(
-            ExamAnswer.exam_id == exam_id,
-            ExamAnswer.exam_question_id == answer_data.exam_question_id,
-            ExamAnswer.user_id == current_user.id
-        ).first()
+        if answer_data.exam_question_id not in exam_question_ids:
+            raise HTTPException(
+                status_code=400,
+                detail=f"题目 {answer_data.exam_question_id} 不属于该考试"
+            )
+    
+    existing_answers = db.query(ExamAnswer).filter(
+        ExamAnswer.exam_id == exam_id,
+        ExamAnswer.user_id == current_user.id
+    ).all()
+    
+    answer_map = {}
+    for answer in existing_answers:
+        answer_map[answer.exam_question_id] = answer
+    
+    for answer_data in answers:
+        exam_answer = answer_map.get(answer_data.exam_question_id)
         
         if not exam_answer:
-            raise HTTPException(status_code=400, detail="答案记录不存在")
+            exam_answer = ExamAnswer(
+                exam_id=exam_id,
+                exam_question_id=answer_data.exam_question_id,
+                user_id=current_user.id,
+                started_at=datetime.utcnow()
+            )
+            db.add(exam_answer)
         
         exam_answer.answer_text = answer_data.answer_text
         exam_answer.submitted_at = datetime.utcnow()
         
-        eq = exam_answer.exam_question
-        q = eq.question
-        
-        is_auto_graded = False
-        auto_score = 0.0
-        
-        if q.question_type in [QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE, QuestionType.TRUE_FALSE]:
-            is_auto_graded = True
-            if answer_data.answer_text == q.correct_answer:
-                auto_score = eq.points
-                exam_answer.is_correct = True
-            else:
-                exam_answer.is_correct = False
+        eq = exam_question_map.get(answer_data.exam_question_id)
+        if eq:
+            q = eq.question
             
-            exam_answer.auto_score = auto_score
-            exam_answer.total_score = auto_score
-            exam_answer.status = ExamAnswerStatus.AUTO_GRADED
-        
-        db.commit()
+            if q.question_type in [QuestionType.SINGLE_CHOICE, QuestionType.MULTIPLE_CHOICE, QuestionType.TRUE_FALSE]:
+                if answer_data.answer_text == q.correct_answer:
+                    exam_answer.is_correct = True
+                    exam_answer.auto_score = eq.points
+                    exam_answer.total_score = eq.points
+                else:
+                    exam_answer.is_correct = False
+                    exam_answer.auto_score = 0.0
+                    exam_answer.total_score = 0.0
+                
+                exam_answer.status = ExamAnswerStatus.AUTO_GRADED
+    
+    db.commit()
     
     return {"message": "答案提交成功"}
 
