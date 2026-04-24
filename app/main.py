@@ -77,47 +77,55 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html", context={})
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="login.html", context={})
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="dashboard.html", context={})
 
 
 @app.get("/questions", response_class=HTMLResponse)
 async def questions_page(request: Request):
-    return templates.TemplateResponse("questions.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="questions.html", context={})
 
 
 @app.get("/exams", response_class=HTMLResponse)
 async def exams_page(request: Request):
-    return templates.TemplateResponse("exams.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="exams.html", context={})
 
 
 @app.get("/exam/{exam_id}", response_class=HTMLResponse)
 async def exam_page(request: Request, exam_id: int):
-    return templates.TemplateResponse("exam.html", {"request": request, "exam_id": exam_id})
+    return templates.TemplateResponse(
+        request=request, 
+        name="exam.html", 
+        context={"exam_id": exam_id}
+    )
 
 
 @app.get("/results", response_class=HTMLResponse)
 async def results_page(request: Request):
-    return templates.TemplateResponse("results.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="results.html", context={})
 
 
 @app.get("/monitor/{exam_id}", response_class=HTMLResponse)
 async def monitor_page(request: Request, exam_id: int):
-    return templates.TemplateResponse("monitor.html", {"request": request, "exam_id": exam_id})
+    return templates.TemplateResponse(
+        request=request, 
+        name="monitor.html", 
+        context={"exam_id": exam_id}
+    )
 
 
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request):
-    return templates.TemplateResponse("users.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="users.html", context={})
 
 
 if __name__ == "__main__":
