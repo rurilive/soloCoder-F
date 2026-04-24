@@ -1,22 +1,33 @@
+import os
 import socket
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Dict, Set
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from app.database import Base
 from app.routers import canvas_router
 
+BASE_DIR = Path(__file__).resolve().parent
+TEMPLATE_DIR = BASE_DIR / "app" / "templates"
+DB_PATH = BASE_DIR / "canvas.db"
+INDEX_HTML = TEMPLATE_DIR / "index.html"
+
 active_connections: Dict[str, Set[WebSocket]] = {}
+
+html_cache = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    engine = create_async_engine("sqlite+aiosqlite:///./canvas.db", echo=False)
+    global html_cache
+    html_cache = INDEX_HTML.read_text(encoding="utf-8")
+    
+    engine = create_async_engine(f"sqlite+aiosqlite:///{DB_PATH}", echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     app.state.async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -25,14 +36,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Collaborative Canvas", lifespan=lifespan)
 
-templates = Jinja2Templates(directory="app/templates")
-
 app.include_router(canvas_router, prefix="/api/canvas")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def get_home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return HTMLResponse(content=html_cache)
 
 
 @app.websocket("/ws/{canvas_id}")
