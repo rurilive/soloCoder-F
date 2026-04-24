@@ -1,3 +1,11 @@
+import sys
+import os
+from pathlib import Path
+
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 from fastapi import FastAPI, Request, Depends, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -12,6 +20,9 @@ from app.models import User
 from app.models.user import UserRole
 from app.security import get_password_hash
 from app.routers import auth_router, questions_router, exams_router, users_router, monitor_router
+
+STATIC_DIR = project_root / "app" / "static"
+TEMPLATES_DIR = project_root / "app" / "templates"
 
 
 def init_db():
@@ -60,8 +71,8 @@ app.include_router(exams_router)
 app.include_router(users_router)
 app.include_router(monitor_router)
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 @app.get("/", response_class=HTMLResponse)
