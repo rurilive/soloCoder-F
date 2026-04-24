@@ -355,9 +355,30 @@
         let actionHistory = [];
         let currentHistoryIndex = -1;
         
+        // 从URL中提取房间ID
+        function getRoomId() {
+            const path = window.location.pathname;
+            const match = path.match(/^\/canvas\/(.+)$/);
+            if (match) {
+                return decodeURIComponent(match[1]);
+            }
+            return 'default';
+        }
+        
+        const canvasId = getRoomId();
+        
+        // 更新页面显示的房间名称
+        document.getElementById('roomId').textContent = canvasId;
+        
+        // 添加返回房间选择页面的功能
+        document.getElementById('roomId').style.cursor = 'pointer';
+        document.getElementById('roomId').title = '点击返回房间选择';
+        document.getElementById('roomId').addEventListener('click', () => {
+            window.location.href = '/';
+        });
+        
         // WebSocket
         let ws = null;
-        const canvasId = 'default';
         
         // WebSocket 连接
         function connectWebSocket() {

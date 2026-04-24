@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多人实时在线画板 - 选择房间</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #4a5568;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #4a5568;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .quick-rooms {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .quick-room-btn {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            background: white;
+            color: #4a5568;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-room-btn:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            color: #667eea;
+        }
+
+        .quick-room-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .enter-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .enter-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .enter-btn:active {
+            transform: translateY(0);
+        }
+
+        .hint {
+            text-align: center;
+            margin-top: 20px;
+            color: #a0aec0;
+            font-size: 0.85rem;
+        }
+
+        .online-users {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .online-users h3 {
+            color: #4a5568;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+        }
+
+        .room-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .room-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 14px;
+            background: #f7fafc;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .room-item .room-name {
+            color: #4a5568;
+            font-weight: 500;
+        }
+
+        .room-item .room-users {
+            color: #667eea;
+            font-size: 0.85rem;
+        }
+
+        .empty-room {
+            text-align: center;
+            color: #a0aec0;
+            font-size: 0.85rem;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 多人实时画板</h1>
+            <p>选择或创建一个房间开始创作</p>
+        </div>
+
+        <form id="roomForm">
+            <div class="form-group">
+                <label for="roomId">房间名称</label>
+                <input type="text" id="roomId" placeholder="输入房间名称..." value="default">
+            </div>
+
+            <div class="form-group">
+                <label>快速选择</label>
+                <div class="quick-rooms">
+                    <button type="button" class="quick-room-btn active" data-room="default">🏠 默认房间</button>
+                    <button type="button" class="quick-room-btn" data-room="art">🎨 艺术工作室</button>
+                    <button type="button" class="quick-room-btn" data-room="game">🎮 游戏专区</button>
+                    <button type="button" class="quick-room-btn" data-room="study">📚 学习交流</button>
+                </div>
+            </div>
+
+            <button type="submit" class="enter-btn">进入房间 →</button>
+        </form>
+
+        <div class="hint">
+            相同房间的用户可以实时协作绘画
+        </div>
+
+        <div class="online-users">
+            <h3>🟢 当前活跃房间</h3>
+            <div class="room-list" id="roomList">
+                <div class="empty-room">暂无活跃房间</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const roomIdInput = document.getElementById('roomId');
+        const quickButtons = document.querySelectorAll('.quick-room-btn');
+        const roomForm = document.getElementById('roomForm');
+        const roomList = document.getElementById('roomList');
+
+        // 快速选择房间
+        quickButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                quickButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                roomIdInput.value = btn.dataset.room;
+            });
+        });
+
+        // 输入时更新选中状态
+        roomIdInput.addEventListener('input', () => {
+            const value = roomIdInput.value;
+            let found = false;
+            
+            quickButtons.forEach(btn => {
+                if (btn.dataset.room === value) {
+                    quickButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    found = true;
+                }
+            });
+            
+            if (!found) {
+                quickButtons.forEach(b => b.classList.remove('active'));
+            }
+        });
+
+        // 提交表单进入房间
+        roomForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const roomId = roomIdInput.value.trim();
+            
+            if (!roomId) {
+                alert('请输入房间名称');
+                return;
+            }
+            
+            // 跳转到绘画页面
+            window.location.href = `/canvas/${encodeURIComponent(roomId)}`;
+        });
+
+        // 定期获取活跃房间列表（模拟）
+        async function updateRoomList() {
+            try {
+                const response = await fetch('/api/rooms');
+                const rooms = await response.json();
+                
+                if (rooms.length === 0) {
+                    roomList.innerHTML = '<div class="empty-room">暂无活跃房间</div>';
+                    return;
+                }
+                
+                roomList.innerHTML = rooms.map(room => `
+                    <div class="room-item" style="cursor: pointer;" onclick="selectRoom('${room.id}')">
+                        <span class="room-name">${room.id}</span>
+                        <span class="room-users">${room.users} 人在线</span>
+                    </div>
+                `).join('');
+            } catch (error) {
+                // 忽略错误
+            }
+        }
+
+        function selectRoom(roomId) {
+            roomIdInput.value = roomId;
+            quickButtons.forEach(btn => {
+                if (btn.dataset.room === roomId) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // 初始更新
+        updateRoomList();
+        // 每5秒更新一次
+        setInterval(updateRoomList, 5000);
+    </script>
+</body>
+</html>
