@@ -26,12 +26,12 @@
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             width: 100%;
-            max-width: 450px;
+            max-width: 500px;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .header h1 {
@@ -45,16 +45,113 @@
             font-size: 0.95rem;
         }
 
-        .form-group {
+        .user-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f7fafc;
+            border-radius: 10px;
             margin-bottom: 25px;
         }
 
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.9rem;
+        }
+
+        .user-type {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .user-type.vip {
+            background: #fef6e4;
+            color: #9c4221;
+        }
+
+        .user-type.normal {
+            background: #e6fffa;
+            color: #234e52;
+        }
+
+        .user-type.guest {
+            background: #f7fafc;
+            color: #718096;
+        }
+
+        .auth-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .login-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .logout-btn {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .logout-btn:hover {
+            background: #feb2b2;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
         .form-group label {
-            display: block;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             color: #4a5568;
             font-weight: 600;
             margin-bottom: 8px;
             font-size: 0.95rem;
+        }
+
+        .form-group .hint {
+            font-size: 0.75rem;
+            color: #a0aec0;
+            font-weight: normal;
         }
 
         .form-group input[type="text"] {
@@ -66,10 +163,44 @@
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        .form-group input[type="text"]:focus {
+        .form-group input:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .form-group input:disabled {
+            background: #f7fafc;
+            cursor: not-allowed;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background: #f7fafc;
+            border-radius: 8px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .checkbox-group.disabled {
+            opacity: 0.5;
+        }
+
+        .checkbox-group.disabled input,
+        .checkbox-group.disabled label {
+            cursor: not-allowed;
         }
 
         .quick-rooms {
@@ -102,6 +233,11 @@
             color: white;
         }
 
+        .quick-room-btn.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .enter-btn {
             width: 100%;
             padding: 16px;
@@ -120,19 +256,34 @@
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
         }
 
-        .enter-btn:active {
-            transform: translateY(0);
+        .enter-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
 
-        .hint {
-            text-align: center;
-            margin-top: 20px;
-            color: #a0aec0;
+        .info-box {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
             font-size: 0.85rem;
         }
 
+        .info-box.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .info-box.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
         .online-users {
-            margin-top: 30px;
+            margin-top: 25px;
             padding-top: 20px;
             border-top: 1px solid #e2e8f0;
         }
@@ -157,16 +308,49 @@
             background: #f7fafc;
             border-radius: 8px;
             font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .room-item .room-name {
+        .room-item:hover {
+            background: #edf2f7;
+        }
+
+        .room-item.locked {
+            background: #fff5f5;
+            cursor: not-allowed;
+        }
+
+        .room-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .room-name {
             color: #4a5568;
             font-weight: 500;
         }
 
-        .room-item .room-users {
+        .room-owner {
+            font-size: 0.75rem;
+            color: #a0aec0;
+        }
+
+        .room-users {
             color: #667eea;
             font-size: 0.85rem;
+        }
+
+        .room-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        .room-badge.private {
+            background: #fed7d7;
+            color: #c53030;
         }
 
         .empty-room {
@@ -174,6 +358,16 @@
             color: #a0aec0;
             font-size: 0.85rem;
             padding: 20px;
+        }
+
+        .error-message {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            display: none;
         }
     </style>
 </head>
@@ -184,28 +378,57 @@
             <p>选择或创建一个房间开始创作</p>
         </div>
 
+        <div class="user-bar" id="userBar">
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">?</div>
+                <div class="user-details">
+                    <span class="user-name" id="userName">游客</span>
+                    <span class="user-type guest" id="userType">未登录</span>
+                </div>
+            </div>
+            <button class="auth-btn login-btn" id="authBtn" onclick="window.location.href='/login'">
+                登录 / 注册
+            </button>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="info-box info" id="guestInfo">
+            <strong>💡 提示：</strong>您当前以游客身份登录，只能使用 <strong>default</strong> 房间。
+            登录后可以创建更多画板，VIP用户还能创建私密画板！
+        </div>
+
         <form id="roomForm">
             <div class="form-group">
-                <label for="roomId">房间名称</label>
+                <label>
+                    <span>房间名称</span>
+                    <span class="hint" id="canvasLimit"></span>
+                </label>
                 <input type="text" id="roomId" placeholder="输入房间名称..." value="default">
+            </div>
+
+            <div class="form-group" id="privateGroup">
+                <div class="checkbox-group disabled" id="privateCheckbox">
+                    <input type="checkbox" id="isPrivate">
+                    <label for="isPrivate">🔒 创建为私密画板（仅本人可见）</label>
+                </div>
+                <div class="info-box warning" style="margin-top: 10px; display: none;" id="privateHint">
+                    <strong>🔒 私密画板：</strong>仅VIP用户可创建私密画板，其他人无法看到或访问。
+                </div>
             </div>
 
             <div class="form-group">
                 <label>快速选择</label>
-                <div class="quick-rooms">
+                <div class="quick-rooms" id="quickRooms">
                     <button type="button" class="quick-room-btn active" data-room="default">🏠 默认房间</button>
-                    <button type="button" class="quick-room-btn" data-room="art">🎨 艺术工作室</button>
-                    <button type="button" class="quick-room-btn" data-room="game">🎮 游戏专区</button>
-                    <button type="button" class="quick-room-btn" data-room="study">📚 学习交流</button>
+                    <button type="button" class="quick-room-btn locked" data-room="art" title="需要登录">🔒 艺术工作室</button>
+                    <button type="button" class="quick-room-btn locked" data-room="game" title="需要登录">🔒 游戏专区</button>
+                    <button type="button" class="quick-room-btn locked" data-room="study" title="需要登录">🔒 学习交流</button>
                 </div>
             </div>
 
-            <button type="submit" class="enter-btn">进入房间 →</button>
+            <button type="submit" class="enter-btn" id="enterBtn">进入房间 →</button>
         </form>
-
-        <div class="hint">
-            相同房间的用户可以实时协作绘画
-        </div>
 
         <div class="online-users">
             <h3>🟢 当前活跃房间</h3>
@@ -216,27 +439,139 @@
     </div>
 
     <script>
+        let currentUser = null;
+
         const roomIdInput = document.getElementById('roomId');
         const quickButtons = document.querySelectorAll('.quick-room-btn');
         const roomForm = document.getElementById('roomForm');
         const roomList = document.getElementById('roomList');
+        const errorMessage = document.getElementById('errorMessage');
+        const guestInfo = document.getElementById('guestInfo');
+        const canvasLimit = document.getElementById('canvasLimit');
+        const privateCheckbox = document.getElementById('privateCheckbox');
+        const privateHint = document.getElementById('privateHint');
+        const isPrivateInput = document.getElementById('isPrivate');
+        const authBtn = document.getElementById('authBtn');
+        const userAvatar = document.getElementById('userAvatar');
+        const userName = document.getElementById('userName');
+        const userType = document.getElementById('userType');
 
-        // 快速选择房间
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('/api/user/info');
+                currentUser = await response.json();
+                updateUI();
+            } catch (error) {
+                currentUser = null;
+                updateUI();
+            }
+        }
+
+        function updateUI() {
+            if (currentUser) {
+                guestInfo.style.display = 'none';
+                userAvatar.textContent = currentUser.username.charAt(0).toUpperCase();
+                userName.textContent = currentUser.username;
+                userType.textContent = currentUser.user_type === 'vip' ? 'VIP用户' : '普通用户';
+                userType.className = `user-type ${currentUser.user_type}`;
+                authBtn.textContent = '退出登录';
+                authBtn.className = 'auth-btn logout-btn';
+                authBtn.onclick = handleLogout;
+
+                roomIdInput.disabled = false;
+                if (currentUser.user_type === 'normal') {
+                    canvasLimit.textContent = '(最多保留2个画板)';
+                } else {
+                    canvasLimit.textContent = '(VIP无限制)';
+                }
+
+                if (currentUser.user_type === 'vip') {
+                    privateCheckbox.classList.remove('disabled');
+                    isPrivateInput.disabled = false;
+                    privateHint.style.display = 'block';
+                } else {
+                    privateCheckbox.classList.add('disabled');
+                    isPrivateInput.disabled = true;
+                    privateHint.style.display = 'none';
+                }
+
+                quickButtons.forEach(btn => {
+                    if (btn.dataset.room !== 'default') {
+                        btn.classList.remove('locked');
+                        btn.title = '';
+                    }
+                });
+
+            } else {
+                guestInfo.style.display = 'block';
+                userAvatar.textContent = '?';
+                userName.textContent = '游客';
+                userType.textContent = '未登录';
+                userType.className = 'user-type guest';
+                authBtn.textContent = '登录 / 注册';
+                authBtn.className = 'auth-btn login-btn';
+                authBtn.onclick = () => window.location.href = '/login';
+
+                roomIdInput.value = 'default';
+                roomIdInput.disabled = true;
+                canvasLimit.textContent = '';
+
+                privateCheckbox.classList.add('disabled');
+                isPrivateInput.disabled = true;
+                privateHint.style.display = 'none';
+
+                quickButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.room === 'default') {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.add('locked');
+                        btn.title = '需要登录';
+                    }
+                });
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                currentUser = null;
+                updateUI();
+                hideError();
+            } catch (error) {
+                showError('退出失败，请稍后重试');
+            }
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
         quickButtons.forEach(btn => {
             btn.addEventListener('click', () => {
+                if (btn.classList.contains('locked')) {
+                    showError('需要登录才能使用该房间');
+                    return;
+                }
+                
                 quickButtons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 roomIdInput.value = btn.dataset.room;
+                hideError();
             });
         });
 
-        // 输入时更新选中状态
         roomIdInput.addEventListener('input', () => {
             const value = roomIdInput.value;
             let found = false;
             
             quickButtons.forEach(btn => {
-                if (btn.dataset.room === value) {
+                if (btn.dataset.room === value && !btn.classList.contains('locked')) {
                     quickButtons.forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     found = true;
@@ -248,21 +583,82 @@
             }
         });
 
-        // 提交表单进入房间
-        roomForm.addEventListener('submit', (e) => {
+        roomForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            hideError();
+            
             const roomId = roomIdInput.value.trim();
             
             if (!roomId) {
-                alert('请输入房间名称');
+                showError('请输入房间名称');
                 return;
             }
-            
-            // 跳转到绘画页面
+
+            if (roomId === 'default') {
+                window.location.href = `/canvas/${encodeURIComponent(roomId)}`;
+                return;
+            }
+
+            if (!currentUser) {
+                showError('请先登录以使用其他画板');
+                return;
+            }
+
+            const existingCanvas = await checkCanvasExists(roomId);
+            if (!existingCanvas) {
+                const userCanvases = await getUserCanvases();
+                if (currentUser.user_type !== 'vip' && userCanvases.length >= 2) {
+                    showError('普通用户最多只能保留2个画板，请先删除或登录VIP');
+                    return;
+                }
+
+                try {
+                    await createCanvas(roomId, isPrivateInput.checked);
+                } catch (error) {
+                    showError(error.message);
+                    return;
+                }
+            }
+
             window.location.href = `/canvas/${encodeURIComponent(roomId)}`;
         });
 
-        // 定期获取活跃房间列表（模拟）
+        async function checkCanvasExists(roomId) {
+            try {
+                const response = await fetch('/api/rooms');
+                const rooms = await response.json();
+                return rooms.some(r => r.id === roomId);
+            } catch (error) {
+                return false;
+            }
+        }
+
+        async function getUserCanvases() {
+            try {
+                const response = await fetch('/api/user/canvases');
+                return await response.json();
+            } catch (error) {
+                return [];
+            }
+        }
+
+        async function createCanvas(roomId, isPrivate) {
+            const formData = new FormData();
+            formData.append('is_private', isPrivate);
+            
+            const response = await fetch(`/api/canvas/${encodeURIComponent(roomId)}/create`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.detail || '创建画板失败');
+            }
+
+            return await response.json();
+        }
+
         async function updateRoomList() {
             try {
                 const response = await fetch('/api/rooms');
@@ -273,14 +669,27 @@
                     return;
                 }
                 
-                roomList.innerHTML = rooms.map(room => `
-                    <div class="room-item" style="cursor: pointer;" onclick="selectRoom('${room.id}')">
-                        <span class="room-name">${room.id}</span>
-                        <span class="room-users">${room.users} 人在线</span>
-                    </div>
-                `).join('');
+                roomList.innerHTML = rooms.map(room => {
+                    const isLocked = room.is_private && (!currentUser || room.owner !== currentUser?.username);
+                    const classes = isLocked ? 'room-item locked' : 'room-item';
+                    
+                    let badges = '';
+                    if (room.is_private) {
+                        badges += '<span class="room-badge private">私密</span>';
+                    }
+                    
+                    return `
+                        <div class="${classes}" onclick="${isLocked ? '' : `selectRoom('${room.id}')`}">
+                            <div class="room-left">
+                                <span class="room-name">${room.id}</span>
+                                ${badges}
+                                ${room.owner ? `<span class="room-owner">@${room.owner}</span>` : ''}
+                            </div>
+                            <span class="room-users">${room.users} 人在线</span>
+                        </div>
+                    `;
+                }).join('');
             } catch (error) {
-                // 忽略错误
             }
         }
 
@@ -293,11 +702,11 @@
                     btn.classList.remove('active');
                 }
             });
+            hideError();
         }
 
-        // 初始更新
+        loadUserInfo();
         updateRoomList();
-        // 每5秒更新一次
         setInterval(updateRoomList, 5000);
     </script>
 </body>
