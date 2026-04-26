@@ -594,24 +594,14 @@
                 return;
             }
 
-            if (roomId === 'default') {
-                window.location.href = `/canvas/${encodeURIComponent(roomId)}`;
+            const checkResult = await checkCanvasExists(roomId);
+            
+            if (!checkResult.can_access) {
+                showError(checkResult.reason || '无法访问该画板');
                 return;
             }
 
-            if (!currentUser) {
-                showError('请先登录以使用其他画板');
-                return;
-            }
-
-            const existingCanvas = await checkCanvasExists(roomId);
-            if (!existingCanvas) {
-                const userCanvases = await getUserCanvases();
-                if (currentUser.user_type !== 'vip' && userCanvases.length >= 2) {
-                    showError('普通用户最多只能保留2个画板，请先删除或登录VIP');
-                    return;
-                }
-
+            if (!checkResult.exists) {
                 try {
                     await createCanvas(roomId, isPrivateInput.checked);
                 } catch (error) {
@@ -625,11 +615,15 @@
 
         async function checkCanvasExists(roomId) {
             try {
-                const response = await fetch('/api/rooms');
-                const rooms = await response.json();
-                return rooms.some(r => r.id === roomId);
+                const response = await fetch(`/api/canvas/${encodeURIComponent(roomId)}/check`);
+                return await response.json();
             } catch (error) {
-                return false;
+                return {
+                    exists: false,
+                    can_create: false,
+                    can_access: false,
+                    reason: '检查画板状态失败'
+                };
             }
         }
 
