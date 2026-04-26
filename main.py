@@ -395,6 +395,6 @@ def get_free_port():
 
 if __name__ == "__main__":
     import uvicorn
-    port = get_free_port()
+    port = 6665
     print(f"Starting server on port {port}")
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=port, reload=True)
