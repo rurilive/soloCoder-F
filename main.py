@@ -335,33 +335,34 @@ async def check_canvas(
 async def websocket_endpoint(
     websocket: WebSocket, 
     canvas_id: str,
-    session_id: Optional[str] = Cookie(None),
-    db: AsyncSession = Depends(get_db)
+    session_id: Optional[str] = Cookie(None)
 ):
     user = None
-    if session_id and session_id in SESSIONS:
-        user_id = SESSIONS[session_id]
-        user = await crud.get_user_by_id(db, user_id)
     
-    if canvas_id != "default" and not user:
-        await websocket.close(code=1008)
-        return
-    
-    canvas = await crud.get_canvas(db, canvas_id)
-    if not canvas:
-        if canvas_id == "default":
-            canvas = await crud.create_canvas(db, canvas_id, owner_id=None, is_private=False)
-        elif user:
-            user_canvas_count = await crud.get_user_canvas_count(db, user.id)
-            if user.user_type != "vip" and user_canvas_count >= 2:
-                await websocket.close(code=1008)
-                return
-            canvas = await crud.create_canvas(db, canvas_id, owner_id=user.id, is_private=False)
-    
-    if canvas and canvas.is_private:
-        if not user or (canvas.owner_id != user.id and user.user_type != "vip"):
+    async with websocket.app.state.async_session() as db:
+        if session_id and session_id in SESSIONS:
+            user_id = SESSIONS[session_id]
+            user = await crud.get_user_by_id(db, user_id)
+        
+        if canvas_id != "default" and not user:
             await websocket.close(code=1008)
             return
+        
+        canvas = await crud.get_canvas(db, canvas_id)
+        if not canvas:
+            if canvas_id == "default":
+                canvas = await crud.create_canvas(db, canvas_id, owner_id=None, is_private=False)
+            elif user:
+                user_canvas_count = await crud.get_user_canvas_count(db, user.id)
+                if user.user_type != "vip" and user_canvas_count >= 2:
+                    await websocket.close(code=1008)
+                    return
+                canvas = await crud.create_canvas(db, canvas_id, owner_id=user.id, is_private=False)
+        
+        if canvas and canvas.is_private:
+            if not user or (canvas.owner_id != user.id and user.user_type != "vip"):
+                await websocket.close(code=1008)
+                return
     
     await websocket.accept()
     
