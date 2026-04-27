@@ -80,7 +80,12 @@ async def register(
     response = JSONResponse(
         content={"success": True, "user": {"id": user.id, "username": user.username, "user_type": user.user_type}}
     )
-    response.set_cookie(key="session_id", value=session_id, httponly=True)
+    response.set_cookie(
+        key="session_id", 
+        value=session_id, 
+        httponly=True,
+        samesite="lax"
+    )
     return response
 
 
@@ -102,7 +107,12 @@ async def login(
     response = JSONResponse(
         content={"success": True, "user": {"id": user.id, "username": user.username, "user_type": user.user_type}}
     )
-    response.set_cookie(key="session_id", value=session_id, httponly=True)
+    response.set_cookie(
+        key="session_id", 
+        value=session_id, 
+        httponly=True,
+        samesite="lax"
+    )
     return response
 
 
