@@ -294,7 +294,8 @@
             try {
                 const response = await fetch('/api/login', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    credentials: 'include'
                 });
 
                 if (response.ok) {
@@ -320,7 +321,8 @@
             try {
                 const response = await fetch('/api/register', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    credentials: 'include'
                 });
 
                 if (response.ok) {

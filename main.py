@@ -32,8 +32,8 @@ room_html_cache = None
 canvas_html_cache = None
 auth_html_cache = None
 
-CLEANUP_INTERVAL = 30
-INACTIVE_TIMEOUT = 60
+CLEANUP_INTERVAL = 60
+INACTIVE_TIMEOUT = 300
 
 
 async def get_db(request: Request) -> AsyncSession:
@@ -395,6 +395,6 @@ def get_free_port():
 
 if __name__ == "__main__":
     import uvicorn
-    port = 6665
+    port = 6555
     print(f"Starting server on port {port}")
-    uvicorn.run("main:app", host="127.0.0.1", port=port, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

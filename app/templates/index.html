@@ -423,7 +423,9 @@
         // 加载历史记录
         async function loadHistory() {
             try {
-                const response = await fetch(`/api/canvas/actions/${canvasId}`);
+                const response = await fetch(`/api/canvas/actions/${canvasId}`, {
+                    credentials: 'include'
+                });
                 const actions = await response.json();
                 
                 // 清空画布
@@ -456,7 +458,8 @@
                         canvas_id: canvasId,
                         action_type: actionType,
                         action_data: actionData
-                    })
+                    }),
+                    credentials: 'include'
                 });
             } catch (error) {
                 console.error('Failed to save action:', error);
@@ -654,7 +657,8 @@
         async function undoRemote(sequence) {
             // 从数据库删除指定序列之后的所有动作
             await fetch(`/api/canvas/actions/${canvasId}/from/${sequence}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                credentials: 'include'
             });
             
             // 重新加载历史
@@ -671,7 +675,8 @@
                 
                 // 从数据库删除
                 await fetch(`/api/canvas/actions/${canvasId}/from/${deletedSequence}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    credentials: 'include'
                 });
                 
                 // 广播撤销
@@ -707,7 +712,8 @@
                 
                 // 清空数据库
                 await fetch(`/api/canvas/actions/${canvasId}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    credentials: 'include'
                 });
                 
                 // 广播清空

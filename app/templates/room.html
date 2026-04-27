@@ -458,7 +458,9 @@
 
         async function loadUserInfo() {
             try {
-                const response = await fetch('/api/user/info');
+                const response = await fetch('/api/user/info', {
+                    credentials: 'include'
+                });
                 currentUser = await response.json();
                 updateUI();
             } catch (error) {
@@ -534,7 +536,10 @@
 
         async function handleLogout() {
             try {
-                await fetch('/api/logout', { method: 'POST' });
+                await fetch('/api/logout', { 
+                    method: 'POST',
+                    credentials: 'include'
+                });
                 currentUser = null;
                 updateUI();
                 hideError();
@@ -615,7 +620,9 @@
 
         async function checkCanvasExists(roomId) {
             try {
-                const response = await fetch(`/api/canvas/${encodeURIComponent(roomId)}/check`);
+                const response = await fetch(`/api/canvas/${encodeURIComponent(roomId)}/check`, {
+                    credentials: 'include'
+                });
                 return await response.json();
             } catch (error) {
                 return {
@@ -629,7 +636,9 @@
 
         async function getUserCanvases() {
             try {
-                const response = await fetch('/api/user/canvases');
+                const response = await fetch('/api/user/canvases', {
+                    credentials: 'include'
+                });
                 return await response.json();
             } catch (error) {
                 return [];
@@ -642,7 +651,8 @@
             
             const response = await fetch(`/api/canvas/${encodeURIComponent(roomId)}/create`, {
                 method: 'POST',
-                body: formData
+                body: formData,
+                credentials: 'include'
             });
 
             if (!response.ok) {
@@ -655,7 +665,9 @@
 
         async function updateRoomList() {
             try {
-                const response = await fetch('/api/rooms');
+                const response = await fetch('/api/rooms', {
+                    credentials: 'include'
+                });
                 const rooms = await response.json();
                 
                 if (rooms.length === 0) {

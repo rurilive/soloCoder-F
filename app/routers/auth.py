@@ -77,7 +77,9 @@ async def register(
     session_id = str(uuid.uuid4())
     SESSIONS[session_id] = user.id
     
-    response = RedirectResponse(url="/", status_code=302)
+    response = JSONResponse(
+        content={"success": True, "user": {"id": user.id, "username": user.username, "user_type": user.user_type}}
+    )
     response.set_cookie(key="session_id", value=session_id, httponly=True)
     return response
 
@@ -97,7 +99,9 @@ async def login(
     session_id = str(uuid.uuid4())
     SESSIONS[session_id] = user.id
     
-    response = RedirectResponse(url="/", status_code=302)
+    response = JSONResponse(
+        content={"success": True, "user": {"id": user.id, "username": user.username, "user_type": user.user_type}}
+    )
     response.set_cookie(key="session_id", value=session_id, httponly=True)
     return response
 
