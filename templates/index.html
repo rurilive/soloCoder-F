@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}二维码追踪系统 - 首页{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-header">
+            <h2>创建新二维码</h2>
+        </div>
+        <form action="{{ url_for('main.create_qr') }}" method="POST">
+            <div class="form-group">
+                <label for="name">二维码名称</label>
+                <input type="text" id="name" name="name" placeholder="例如：官网链接、活动推广" required>
+            </div>
+            <div class="form-group">
+                <label for="target_url">目标URL</label>
+                <input type="url" id="target_url" name="target_url" placeholder="https://example.com" required>
+            </div>
+            <button type="submit" class="btn btn-primary">生成二维码</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>已创建的二维码</h2>
+            <span>共 {{ qr_codes|length }} 个二维码</span>
+        </div>
+        
+        {% if qr_codes %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>短链接</th>
+                        <th>扫描次数</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for qr in qr_codes %}
+                        <tr>
+                            <td><strong>{{ qr.name }}</strong></td>
+                            <td>
+                                <div class="url-display" style="display: inline-block; max-width: 200px; vertical-align: middle;">
+                                    {{ url_for('main.redirect_short', short_code=qr.short_code, _external=True) }}
+                                </div>
+                            </td>
+                            <td><strong>{{ qr.scan_count }}</strong></td>
+                            <td>
+                                <span class="status-badge {{ 'active' if qr.is_active else 'inactive' }}">
+                                    {{ '启用' if qr.is_active else '禁用' }}
+                                </span>
+                            </td>
+                            <td>{{ qr.created_at.strftime('%Y-%m-%d %H:%M') if qr.created_at else '-' }}</td>
+                            <td>
+                                <div class="actions">
+                                    <a href="{{ url_for('main.qr_detail', qr_id=qr.id) }}" class="btn btn-secondary btn-sm">查看详情</a>
+                                    <form action="{{ url_for('main.toggle_qr', qr_id=qr.id) }}" method="POST" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm {{ 'btn-danger' if qr.is_active else 'btn-primary' }}">
+                                            {{ '禁用' if qr.is_active else '启用' }}
+                                        </button>
+                                    </form>
+                                    <form action="{{ url_for('main.delete_qr', qr_id=qr.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('确定要删除此二维码吗？');">
+                                        <button type="submit" class="btn btn-danger btn-sm">删除</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                <p>暂无二维码</p>
+                <p style="font-size: 14px; margin-top: 10px;">创建您的第一个动态二维码开始追踪吧</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

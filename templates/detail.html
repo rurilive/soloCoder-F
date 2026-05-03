@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}{{ qr_code.name }} - 二维码详情{% endblock %}
+
+{% block content %}
+    <a href="{{ url_for('main.index') }}" class="back-link">← 返回列表</a>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2>{{ qr_code.name }}</h2>
+            <span class="status-badge {{ 'active' if qr_code.is_active else 'inactive' }}">
+                {{ '启用' if qr_code.is_active else '禁用' }}
+            </span>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="number">{{ qr_code.scan_count }}</div>
+                <div class="label">总扫描次数</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">{{ device_counts|length }}</div>
+                <div class="label">设备类型数</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">{{ browser_counts|length }}</div>
+                <div class="label">浏览器种类</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">{{ qr_code.created_at.strftime('%Y-%m-%d') if qr_code.created_at else '-' }}</div>
+                <div class="label">创建日期</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>二维码信息</h2>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; align-items: start;">
+            <div class="qr-container">
+                <img src="{{ qr_image }}" alt="QR Code">
+                <p style="margin-top: 15px; color: #777; font-size: 13px;">扫描此二维码进行访问</p>
+            </div>
+            
+            <div>
+                <div class="form-group">
+                    <label>短链接</label>
+                    <div style="display: flex; align-items: center;">
+                        <div class="url-display" id="shortUrl" style="flex: 1; margin-right: 10px;">{{ short_url }}</div>
+                        <button class="btn btn-secondary copy-btn" onclick="copyToClipboard('shortUrl')">复制</button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>目标URL</label>
+                    <div style="display: flex; align-items: center;">
+                        <div class="url-display" id="targetUrl" style="flex: 1; margin-right: 10px;">{{ qr_code.target_url }}</div>
+                        <button class="btn btn-secondary copy-btn" onclick="copyToClipboard('targetUrl')">复制</button>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <form action="{{ url_for('main.toggle_qr', qr_id=qr_code.id) }}" method="POST" style="display: inline;">
+                        <button type="submit" class="btn {{ 'btn-danger' if qr_code.is_active else 'btn-primary' }}">
+                            {{ '禁用二维码' if qr_code.is_active else '启用二维码' }}
+                        </button>
+                    </form>
+                    <form action="{{ url_for('main.delete_qr', qr_id=qr_code.id) }}" method="POST" style="display: inline; margin-left: 10px;" onsubmit="return confirm('确定要删除此二维码吗？此操作不可恢复。');">
+                        <button type="submit" class="btn btn-danger">删除二维码</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if last_7_days %}
+        <div class="card">
+            <div class="card-header">
+                <h2>近7天扫描趋势</h2>
+            </div>
+            <div class="chart-container">
+                <div class="bar-chart">
+                    {% set max_count = last_7_days.values()|max %}
+                    {% for date, count in last_7_days.items() %}
+                        {% set height = 100 if max_count == 0 else (count / max_count * 100) %}
+                        <div class="bar" style="height: {{ height }}%;">
+                            <div class="bar-value">{{ count }}</div>
+                            <div class="bar-label">{{ date[5:] }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if device_counts or browser_counts or country_counts %}
+        <div class="card">
+            <div class="card-header">
+                <h2>访问统计</h2>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                {% if device_counts %}
+                    <div>
+                        <div class="chart-title">设备类型分布</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>设备类型</th>
+                                    <th>次数</th>
+                                    <th>占比</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set total = device_counts.values()|sum %}
+                                {% for device, count in device_counts.items() %}
+                                    <tr>
+                                        <td>{{ device }}</td>
+                                        <td>{{ count }}</td>
+                                        <td>{{ (count / total * 100)|round(1) }}%</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+                
+                {% if browser_counts %}
+                    <div>
+                        <div class="chart-title">浏览器分布</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>浏览器</th>
+                                    <th>次数</th>
+                                    <th>占比</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set total = browser_counts.values()|sum %}
+                                {% for browser, count in browser_counts.items() %}
+                                    <tr>
+                                        <td>{{ browser }}</td>
+                                        <td>{{ count }}</td>
+                                        <td>{{ (count / total * 100)|round(1) }}%</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+                
+                {% if country_counts %}
+                    <div>
+                        <div class="chart-title">地域分布</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>国家/地区</th>
+                                    <th>次数</th>
+                                    <th>占比</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set total = country_counts.values()|sum %}
+                                {% for country, count in country_counts.items() %}
+                                    <tr>
+                                        <td>{{ country }}</td>
+                                        <td>{{ count }}</td>
+                                        <td>{{ (count / total * 100)|round(1) }}%</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header">
+            <h2>扫描记录</h2>
+            <span>共 {{ scan_records|length }} 条记录</span>
+        </div>
+        
+        {% if scan_records %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>设备类型</th>
+                        <th>浏览器</th>
+                        <th>操作系统</th>
+                        <th>IP地址</th>
+                        <th>地域</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in scan_records %}
+                        <tr>
+                            <td>{{ record.scanned_at.strftime('%Y-%m-%d %H:%M:%S') if record.scanned_at else '-' }}</td>
+                            <td>{{ record.device_type or '-' }}</td>
+                            <td>{{ record.browser or '-' }}</td>
+                            <td>{{ record.os or '-' }}</td>
+                            <td>{{ record.ip_address or '-' }}</td>
+                            <td>
+                                {% if record.country %}
+                                    {{ record.country }}{% if record.city %}, {{ record.city }}{% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                <p>暂无扫描记录</p>
+                <p style="font-size: 14px; margin-top: 10px;">当有人扫描此二维码时，记录将显示在这里</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    const text = element.textContent;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '已复制!';
+        btn.style.backgroundColor = '#28a745';
+        
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.backgroundColor = '';
+        }, 2000);
+    }).catch(err => {
+        console.error('复制失败:', err);
+        alert('复制失败，请手动复制');
+    });
+}
+</script>
+{% endblock %}
