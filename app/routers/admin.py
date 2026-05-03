@@ -1,6 +1,6 @@
 import json
 from typing import Optional
-from fastapi import APIRouter, Depends, Request, HTTPException, Form
+from fastapi import APIRouter, Depends, Request, HTTPException, Form, Cookie
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,10 +18,22 @@ async def get_db(request: Request) -> AsyncSession:
 
 async def get_current_admin(
     request: Request,
+    session_id: Optional[str] = Cookie(None),
     db: AsyncSession = Depends(get_db)
 ) -> Optional[User]:
-    from app.routers.auth import get_current_user
-    user = await get_current_user(request, db=db)
+    from app.routers.auth import SESSIONS
+    
+    if not session_id or session_id not in SESSIONS:
+        return None
+    
+    user_id = SESSIONS[session_id]
+    user = await crud.get_user_by_id(db, user_id)
+    
+    if user and user.is_banned:
+        if session_id in SESSIONS:
+            del SESSIONS[session_id]
+        return None
+    
     if user and user.user_type == "admin":
         return user
     return None
