@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, flash, make_response, current_app
+from flask_login import login_user, logout_user, login_required, current_user
 from app import db, allowed_file
-from app.models import QRCode, ScanRecord
+from app.models import QRCode, ScanRecord, User
 from app.utils import (
     generate_qr_code, 
     parse_user_agent, 
@@ -27,10 +28,85 @@ main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
-    qr_codes = QRCode.query.order_by(QRCode.created_at.desc()).all()
-    return render_template('index.html', qr_codes=qr_codes)
+    if current_user.is_authenticated:
+        qr_codes = QRCode.query.filter_by(user_id=current_user.id).order_by(QRCode.created_at.desc()).all()
+        return render_template('index.html', qr_codes=qr_codes, current_user=current_user)
+    else:
+        qr_codes = QRCode.query.order_by(QRCode.created_at.desc()).limit(10).all()
+        return render_template('index.html', qr_codes=qr_codes, current_user=None)
+
+@main.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.check_password(password):
+            login_user(user)
+            flash('登录成功！', 'success')
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('main.index'))
+        else:
+            flash('用户名或密码错误', 'error')
+    
+    return render_template('login.html', current_user=current_user)
+
+@main.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        if not username or not email or not password:
+            flash('请填写所有必填字段', 'error')
+            return redirect(url_for('main.register'))
+        
+        if password != confirm_password:
+            flash('两次输入的密码不一致', 'error')
+            return redirect(url_for('main.register'))
+        
+        if len(password) < 6:
+            flash('密码至少需要6个字符', 'error')
+            return redirect(url_for('main.register'))
+        
+        if User.query.filter_by(username=username).first():
+            flash('用户名已存在', 'error')
+            return redirect(url_for('main.register'))
+        
+        if User.query.filter_by(email=email).first():
+            flash('邮箱已被注册', 'error')
+            return redirect(url_for('main.register'))
+        
+        user = User(username=username, email=email)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        
+        login_user(user)
+        flash('注册成功！', 'success')
+        return redirect(url_for('main.index'))
+    
+    return render_template('register.html', current_user=current_user)
+
+@main.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('已成功登出', 'success')
+    return redirect(url_for('main.index'))
 
 @main.route('/create', methods=['POST'])
+@login_required
 def create_qr():
     name = request.form.get('name', '').strip()
     target_url = request.form.get('target_url', '').strip()
@@ -43,7 +119,7 @@ def create_qr():
         flash('请输入有效的URL地址', 'error')
         return redirect(url_for('main.index'))
     
-    qr_code = QRCode(name=name, target_url=target_url)
+    qr_code = QRCode(name=name, target_url=target_url, user_id=current_user.id)
     db.session.add(qr_code)
     db.session.commit()
     
@@ -54,29 +130,38 @@ def create_qr():
 def qr_detail(qr_id):
     qr_code = QRCode.query.get_or_404(qr_id)
     
+    is_owner = current_user.is_authenticated and qr_code.user_id == current_user.id
+    
     short_url = url_for('main.redirect_short', short_code=qr_code.short_code, _external=True)
     qr_image = generate_qr_code(short_url)
     
-    scan_records = ScanRecord.query.filter_by(qr_code_id=qr_id).order_by(ScanRecord.scanned_at.desc()).all()
-    
-    device_counts = Counter(r.device_type for r in scan_records if r.device_type)
-    browser_counts = Counter(r.browser for r in scan_records if r.browser)
-    country_counts = Counter(r.country for r in scan_records if r.country)
-    
-    today = datetime.utcnow().date()
+    scan_records = []
+    device_counts = {}
+    browser_counts = {}
+    country_counts = {}
     last_7_days = {}
-    for i in range(7):
-        date = today - timedelta(days=i)
-        date_str = date.strftime('%Y-%m-%d')
-        count = ScanRecord.query.filter(
-            ScanRecord.qr_code_id == qr_id,
-            db.func.date(ScanRecord.scanned_at) == date_str
-        ).count()
-        last_7_days[date_str] = count
     
-    last_7_days = dict(sorted(last_7_days.items()))
+    if is_owner:
+        scan_records = ScanRecord.query.filter_by(qr_code_id=qr_id).order_by(ScanRecord.scanned_at.desc()).all()
+        
+        device_counts = Counter(r.device_type for r in scan_records if r.device_type)
+        browser_counts = Counter(r.browser for r in scan_records if r.browser)
+        country_counts = Counter(r.country for r in scan_records if r.country)
+        
+        today = datetime.utcnow().date()
+        last_7_days = {}
+        for i in range(7):
+            date = today - timedelta(days=i)
+            date_str = date.strftime('%Y-%m-%d')
+            count = ScanRecord.query.filter(
+                ScanRecord.qr_code_id == qr_id,
+                db.func.date(ScanRecord.scanned_at) == date_str
+            ).count()
+            last_7_days[date_str] = count
+        
+        last_7_days = dict(sorted(last_7_days.items()))
     
-    available_styles = get_available_styles()
+    available_styles = get_available_styles() if is_owner else {}
     
     return render_template(
         'detail.html',
@@ -88,13 +173,19 @@ def qr_detail(qr_id):
         browser_counts=dict(browser_counts),
         country_counts=dict(country_counts),
         last_7_days=last_7_days,
-        available_styles=available_styles
+        available_styles=available_styles,
+        is_owner=is_owner,
+        current_user=current_user
     )
 
 
 @main.route('/api/qr/<int:qr_id>/style/<style_name>')
+@login_required
 def get_qr_with_style(qr_id, style_name):
     qr_code = QRCode.query.get_or_404(qr_id)
+    if qr_code.user_id != current_user.id:
+        return jsonify({'error': '您没有权限访问此二维码'}), 403
+    
     short_url = url_for('main.redirect_short', short_code=qr_code.short_code, _external=True)
     
     available_styles = get_available_styles()
@@ -112,8 +203,13 @@ def get_qr_with_style(qr_id, style_name):
 
 
 @main.route('/api/qr/<int:qr_id>/download/<style_name>')
+@login_required
 def download_qr_with_style(qr_id, style_name):
     qr_code = QRCode.query.get_or_404(qr_id)
+    if qr_code.user_id != current_user.id:
+        flash('您没有权限下载此二维码', 'error')
+        return redirect(url_for('main.index'))
+    
     short_url = url_for('main.redirect_short', short_code=qr_code.short_code, _external=True)
     
     available_styles = get_available_styles()
@@ -144,16 +240,24 @@ def list_qr_styles():
     })
 
 @main.route('/delete/<int:qr_id>', methods=['POST'])
+@login_required
 def delete_qr(qr_id):
     qr_code = QRCode.query.get_or_404(qr_id)
+    if qr_code.user_id != current_user.id:
+        flash('您没有权限删除此二维码', 'error')
+        return redirect(url_for('main.index'))
     db.session.delete(qr_code)
     db.session.commit()
     flash('二维码已删除', 'success')
     return redirect(url_for('main.index'))
 
 @main.route('/toggle/<int:qr_id>', methods=['POST'])
+@login_required
 def toggle_qr(qr_id):
     qr_code = QRCode.query.get_or_404(qr_id)
+    if qr_code.user_id != current_user.id:
+        flash('您没有权限修改此二维码', 'error')
+        return redirect(url_for('main.index'))
     qr_code.is_active = not qr_code.is_active
     db.session.commit()
     
@@ -191,8 +295,11 @@ def redirect_short(short_code):
     return redirect(qr_code.target_url)
 
 @main.route('/api/qr/<int:qr_id>/stats')
+@login_required
 def api_qr_stats(qr_id):
     qr_code = QRCode.query.get_or_404(qr_id)
+    if qr_code.user_id != current_user.id:
+        return jsonify({'error': '您没有权限访问此二维码的统计信息'}), 403
     
     scan_records = ScanRecord.query.filter_by(qr_code_id=qr_id).all()
     
@@ -212,6 +319,7 @@ def api_qr_stats(qr_id):
 
 
 @main.route('/api/upload/image', methods=['POST'])
+@login_required
 def upload_image():
     if 'image' not in request.files:
         return jsonify({'error': 'No image file provided'}), 400
@@ -260,8 +368,12 @@ def upload_image():
 
 
 @main.route('/api/qr/<int:qr_id>/with-logo', methods=['POST'])
+@login_required
 def generate_qr_logo(qr_id):
     qr_code = QRCode.query.get_or_404(qr_id)
+    if qr_code.user_id != current_user.id:
+        return jsonify({'error': '您没有权限修改此二维码'}), 403
+    
     short_url = url_for('main.redirect_short', short_code=qr_code.short_code, _external=True)
     
     data = request.get_json()
@@ -310,8 +422,12 @@ def generate_qr_logo(qr_id):
 
 
 @main.route('/api/qr/<int:qr_id>/on-background', methods=['POST'])
+@login_required
 def generate_qr_background(qr_id):
     qr_code = QRCode.query.get_or_404(qr_id)
+    if qr_code.user_id != current_user.id:
+        return jsonify({'error': '您没有权限修改此二维码'}), 403
+    
     short_url = url_for('main.redirect_short', short_code=qr_code.short_code, _external=True)
     
     data = request.get_json()
@@ -365,8 +481,12 @@ def generate_qr_background(qr_id):
 
 
 @main.route('/api/qr/<int:qr_id>/artistic', methods=['POST'])
+@login_required
 def generate_qr_artistic(qr_id):
     qr_code = QRCode.query.get_or_404(qr_id)
+    if qr_code.user_id != current_user.id:
+        return jsonify({'error': '您没有权限修改此二维码'}), 403
+    
     short_url = url_for('main.redirect_short', short_code=qr_code.short_code, _external=True)
     
     data = request.get_json()
@@ -416,7 +536,13 @@ def generate_qr_artistic(qr_id):
 
 
 @main.route('/api/qr/<int:qr_id>/download-custom', methods=['POST'])
+@login_required
 def download_custom_qr(qr_id):
+    qr_code = QRCode.query.get_or_404(qr_id)
+    if qr_code.user_id != current_user.id:
+        flash('您没有权限下载此二维码', 'error')
+        return redirect(url_for('main.index'))
+    
     data = request.get_json()
     
     if not data or 'qr_image' not in data:
@@ -424,7 +550,6 @@ def download_custom_qr(qr_id):
     
     try:
         qr_img_data = data['qr_image']
-        qr_code = QRCode.query.get_or_404(qr_id)
         
         img = base64_to_image(qr_img_data)
         

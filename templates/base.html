@@ -797,10 +797,25 @@
 </head>
 <body>
     <header>
-        <div class="container">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
             <a href="{{ url_for('main.index') }}">
                 <h1>📱 二维码追踪系统</h1>
             </a>
+            <div class="user-nav" style="display: flex; align-items: center; gap: 15px;">
+                {% if current_user and current_user.is_authenticated %}
+                    <span style="color: white; font-size: 14px;">欢迎, {{ current_user.username }}</span>
+                    <a href="{{ url_for('main.logout') }}" class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 13px;">
+                        退出登录
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('main.login') }}" class="btn btn-sm" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 13px;">
+                        登录
+                    </a>
+                    <a href="{{ url_for('main.register') }}" class="btn btn-sm" style="background: white; color: #667eea; border: none; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 13px; font-weight: 500;">
+                        注册
+                    </a>
+                {% endif %}
+            </div>
         </div>
     </header>
     

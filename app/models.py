@@ -1,7 +1,8 @@
-from app import db
+from app import db, bcrypt
 from datetime import datetime
 import string
 import random
+from flask_login import UserMixin
 
 def generate_short_code(length=6):
     chars = string.ascii_letters + string.digits
@@ -10,6 +11,33 @@ def generate_short_code(length=6):
         if not QRCode.query.filter_by(short_code=code).first():
             return code
 
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    qr_codes = db.relationship('QRCode', backref='owner', lazy=True, cascade='all, delete-orphan')
+    
+    def set_password(self, password):
+        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+    
+    def check_password(self, password):
+        return bcrypt.check_password_hash(self.password_hash, password)
+    
+    def get_id(self):
+        return str(self.id)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
 class QRCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -17,6 +45,8 @@ class QRCode(db.Model):
     short_code = db.Column(db.String(10), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
+    
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     
     scan_records = db.relationship('ScanRecord', backref='qr_code', lazy=True, cascade='all, delete-orphan')
     
@@ -37,7 +67,8 @@ class QRCode(db.Model):
             'short_code': self.short_code,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'is_active': self.is_active,
-            'scan_count': self.scan_count
+            'scan_count': self.scan_count,
+            'user_id': self.user_id
         }
 
 class ScanRecord(db.Model):
