@@ -39,7 +39,12 @@ async def get_current_user(
     if not session_id or session_id not in SESSIONS:
         return None
     user_id = SESSIONS[session_id]
-    return await crud.get_user_by_id(db, user_id)
+    user = await crud.get_user_by_id(db, user_id)
+    if user and user.is_banned:
+        if session_id in SESSIONS:
+            del SESSIONS[session_id]
+        return None
+    return user
 
 
 class UserResponse(BaseModel):

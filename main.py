@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from pydantic import BaseModel
 
 from app.database import Base
-from app.routers import canvas_router, auth_router
+from app.routers import canvas_router, auth_router, admin_router
 from app import crud
 from app.routers.auth import SESSIONS, get_current_user
 
@@ -24,6 +24,7 @@ DB_PATH = BASE_DIR / "canvas.db"
 INDEX_HTML = TEMPLATE_DIR / "index.html"
 ROOM_HTML = TEMPLATE_DIR / "room.html"
 AUTH_HTML = TEMPLATE_DIR / "auth.html"
+ADMIN_HTML = TEMPLATE_DIR / "admin.html"
 
 active_connections: Dict[str, Set[WebSocket]] = {}
 room_last_activity: Dict[str, datetime] = {}
@@ -31,6 +32,7 @@ room_last_activity: Dict[str, datetime] = {}
 room_html_cache = None
 canvas_html_cache = None
 auth_html_cache = None
+admin_html_cache = None
 
 CLEANUP_INTERVAL = 60
 INACTIVE_TIMEOUT = 300
@@ -67,16 +69,65 @@ async def cleanup_inactive_rooms(app: FastAPI):
                 print(f"[CLEANUP] 删除不活跃画板: {room_id}")
 
 
+async def migrate_database(engine):
+    from sqlalchemy import text
+    
+    async with engine.begin() as conn:
+        result = await conn.execute(text("PRAGMA table_info(users)"))
+        columns = [row[1] for row in result.fetchall()]
+        
+        if "is_banned" not in columns:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN is_banned BOOLEAN DEFAULT 0"))
+            print("[MIGRATION] Added is_banned column to users table")
+        
+        if "banned_reason" not in columns:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN banned_reason VARCHAR(256)"))
+            print("[MIGRATION] Added banned_reason column to users table")
+        
+        if "banned_at" not in columns:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN banned_at DATETIME"))
+            print("[MIGRATION] Added banned_at column to users table")
+        
+        await conn.commit()
+
+
+async def init_default_admin(engine):
+    from app.routers.auth import get_password_hash
+    
+    async with async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)() as session:
+        admin_user = await crud.get_user_by_username(session, "admin")
+        
+        if not admin_user:
+            password_hash = get_password_hash("admin123")
+            admin_user = await crud.create_user(
+                session,
+                username="admin",
+                password_hash=password_hash,
+                user_type="admin"
+            )
+            print("[INIT] Created default admin user: admin / admin123")
+        else:
+            if admin_user.user_type != "admin":
+                await crud.update_user_type(session, admin_user.id, "admin")
+                print("[INIT] Updated admin user to admin type")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global room_html_cache, canvas_html_cache, auth_html_cache
+    global room_html_cache, canvas_html_cache, auth_html_cache, admin_html_cache
     room_html_cache = ROOM_HTML.read_text(encoding="utf-8")
     canvas_html_cache = INDEX_HTML.read_text(encoding="utf-8")
     auth_html_cache = AUTH_HTML.read_text(encoding="utf-8")
+    admin_html_cache = ADMIN_HTML.read_text(encoding="utf-8") if ADMIN_HTML.exists() else ""
     
     engine = create_async_engine(f"sqlite+aiosqlite:///{DB_PATH}", echo=False)
+    
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    
+    await migrate_database(engine)
+    await init_default_admin(engine)
+    
     app.state.async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     
     cleanup_task = asyncio.create_task(cleanup_inactive_rooms(app))
@@ -94,6 +145,7 @@ app = FastAPI(title="Collaborative Canvas", lifespan=lifespan)
 
 app.include_router(canvas_router, prefix="/api/canvas")
 app.include_router(auth_router)
+app.include_router(admin_router)
 
 
 class RoomInfo(BaseModel):
@@ -117,6 +169,17 @@ async def get_home(request: Request):
 @app.get("/login", response_class=HTMLResponse)
 async def get_login_page(request: Request):
     return HTMLResponse(content=auth_html_cache)
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def get_admin_page(
+    request: Request,
+    user = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    if not user or user.user_type != "admin":
+        return RedirectResponse(url="/login", status_code=302)
+    return HTMLResponse(content=admin_html_cache)
 
 
 @app.get("/canvas/{room_id}", response_class=HTMLResponse)

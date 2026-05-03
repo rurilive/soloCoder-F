@@ -2,8 +2,8 @@ import json
 from datetime import datetime, timedelta
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, func, update
-from app.models import CanvasAction, User, Canvas
+from sqlalchemy import select, delete, func, update, desc
+from app.models import CanvasAction, User, Canvas, AdminLog
 
 
 async def create_action(
@@ -204,3 +204,102 @@ async def delete_canvas(
     result = await session.execute(query)
     await session.commit()
     return result.rowcount
+
+
+async def get_all_users(
+    session: AsyncSession,
+    offset: int = 0,
+    limit: int = 50
+) -> List[User]:
+    query = select(User).order_by(desc(User.created_at)).offset(offset).limit(limit)
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
+async def get_user_count(
+    session: AsyncSession
+) -> int:
+    query = select(func.count(User.id))
+    result = await session.execute(query)
+    return result.scalar() or 0
+
+
+async def update_user_type(
+    session: AsyncSession,
+    user_id: int,
+    user_type: str
+) -> Optional[User]:
+    user = await get_user_by_id(session, user_id)
+    if user:
+        user.user_type = user_type
+        await session.commit()
+        await session.refresh(user)
+    return user
+
+
+async def ban_user(
+    session: AsyncSession,
+    user_id: int,
+    reason: str = ""
+) -> Optional[User]:
+    user = await get_user_by_id(session, user_id)
+    if user:
+        user.is_banned = True
+        user.banned_reason = reason
+        user.banned_at = datetime.utcnow()
+        await session.commit()
+        await session.refresh(user)
+    return user
+
+
+async def unban_user(
+    session: AsyncSession,
+    user_id: int
+) -> Optional[User]:
+    user = await get_user_by_id(session, user_id)
+    if user:
+        user.is_banned = False
+        user.banned_reason = None
+        user.banned_at = None
+        await session.commit()
+        await session.refresh(user)
+    return user
+
+
+async def create_admin_log(
+    session: AsyncSession,
+    admin_id: int,
+    action: str,
+    target_user_id: Optional[int] = None,
+    details: Optional[str] = None,
+    ip_address: Optional[str] = None
+) -> AdminLog:
+    log = AdminLog(
+        admin_id=admin_id,
+        action=action,
+        target_user_id=target_user_id,
+        details=details,
+        ip_address=ip_address
+    )
+    session.add(log)
+    await session.commit()
+    await session.refresh(log)
+    return log
+
+
+async def get_admin_logs(
+    session: AsyncSession,
+    offset: int = 0,
+    limit: int = 50
+) -> List[AdminLog]:
+    query = select(AdminLog).order_by(desc(AdminLog.created_at)).offset(offset).limit(limit)
+    result = await session.execute(query)
+    return result.scalars().all()
+
+
+async def get_admin_log_count(
+    session: AsyncSession
+) -> int:
+    query = select(func.count(AdminLog.id))
+    result = await session.execute(query)
+    return result.scalar() or 0
