@@ -1,9 +1,11 @@
-from flask import Blueprint, render_template, request, redirect, url_for, jsonify, flash
+from flask import Blueprint, render_template, request, redirect, url_for, jsonify, flash, make_response
 from app import db
 from app.models import QRCode, ScanRecord
-from app.utils import generate_qr_code, parse_user_agent, get_client_ip, is_valid_url, get_location_from_ip
+from app.utils import generate_qr_code, parse_user_agent, get_client_ip, is_valid_url, get_location_from_ip, get_available_styles
 from datetime import datetime, timedelta
 from collections import Counter
+import io
+import base64
 
 main = Blueprint('main', __name__)
 
@@ -58,6 +60,8 @@ def qr_detail(qr_id):
     
     last_7_days = dict(sorted(last_7_days.items()))
     
+    available_styles = get_available_styles()
+    
     return render_template(
         'detail.html',
         qr_code=qr_code,
@@ -67,8 +71,61 @@ def qr_detail(qr_id):
         device_counts=dict(device_counts),
         browser_counts=dict(browser_counts),
         country_counts=dict(country_counts),
-        last_7_days=last_7_days
+        last_7_days=last_7_days,
+        available_styles=available_styles
     )
+
+
+@main.route('/api/qr/<int:qr_id>/style/<style_name>')
+def get_qr_with_style(qr_id, style_name):
+    qr_code = QRCode.query.get_or_404(qr_id)
+    short_url = url_for('main.redirect_short', short_code=qr_code.short_code, _external=True)
+    
+    available_styles = get_available_styles()
+    if style_name not in available_styles:
+        return jsonify({'error': 'Invalid style name'}), 400
+    
+    qr_image = generate_qr_code(short_url, style=style_name)
+    
+    return jsonify({
+        'success': True,
+        'style': style_name,
+        'style_info': available_styles[style_name],
+        'qr_image': qr_image
+    })
+
+
+@main.route('/api/qr/<int:qr_id>/download/<style_name>')
+def download_qr_with_style(qr_id, style_name):
+    qr_code = QRCode.query.get_or_404(qr_id)
+    short_url = url_for('main.redirect_short', short_code=qr_code.short_code, _external=True)
+    
+    available_styles = get_available_styles()
+    if style_name not in available_styles:
+        return jsonify({'error': 'Invalid style name'}), 400
+    
+    qr_image = generate_qr_code(short_url, style=style_name, size=15)
+    
+    img_data = base64.b64decode(qr_image.split(',')[1])
+    
+    response = make_response(img_data)
+    response.headers.set('Content-Type', 'image/png')
+    response.headers.set(
+        'Content-Disposition', 
+        'attachment', 
+        filename=f'{qr_code.name}_{style_name}.png'
+    )
+    
+    return response
+
+
+@main.route('/api/qr/styles')
+def list_qr_styles():
+    available_styles = get_available_styles()
+    return jsonify({
+        'success': True,
+        'styles': available_styles
+    })
 
 @main.route('/delete/<int:qr_id>', methods=['POST'])
 def delete_qr(qr_id):

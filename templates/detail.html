@@ -39,9 +39,64 @@
         </div>
         
         <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; align-items: start;">
-            <div class="qr-container">
-                <img src="{{ qr_image }}" alt="QR Code">
-                <p style="margin-top: 15px; color: #777; font-size: 13px;">扫描此二维码进行访问</p>
+            <div class="qr-wrapper">
+                <div class="qr-container">
+                    <img id="qrImage" src="{{ qr_image }}" alt="QR Code">
+                    <p style="margin-top: 15px; color: #777; font-size: 13px;">扫描此二维码进行访问</p>
+                </div>
+                
+                <div class="style-selector-section">
+                    <div class="section-header">
+                        <label>选择样式</label>
+                        <div class="style-actions">
+                            <button id="downloadBtn" class="btn btn-secondary btn-sm" onclick="downloadQRCode()">
+                                下载当前样式
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="style-tabs">
+                        <button class="style-tab active" data-tab="presets">预设样式</button>
+                    </div>
+                    
+                    <div class="style-content" id="styleContent">
+                        <div class="style-grid" id="presetsTab">
+                            {% for style_key, style_info in available_styles.items() %}
+                            <div 
+                                class="style-option {% if style_key == 'classic' %}selected{% endif %}"
+                                data-style="{{ style_key }}"
+                                data-name="{{ style_info.name }}"
+                                data-description="{{ style_info.description }}"
+                                onclick="selectStyle('{{ style_key }}')"
+                                title="{{ style_info.description }}"
+                            >
+                                <div class="style-preview">
+                                    <div class="style-dot" style="background: 
+                                        {% if style_info.color_mask == 'solid' %}
+                                            rgb{{ style_info.colors.front }}
+                                        {% elif style_info.color_mask == 'radial_gradient' or style_info.color_mask == 'square_gradient' %}
+                                            radial-gradient(circle, rgb{{ style_info.colors.center }}, rgb{{ style_info.colors.front }})
+                                        {% elif style_info.color_mask == 'horizontal_gradient' %}
+                                            linear-gradient(to right, rgb{{ style_info.colors.left }}, rgb{{ style_info.colors.right }})
+                                        {% elif style_info.color_mask == 'vertical_gradient' %}
+                                            linear-gradient(to bottom, rgb{{ style_info.colors.top }}, rgb{{ style_info.colors.bottom }})
+                                        {% else %}
+                                            #000
+                                        {% endif %}
+                                    ;"></div>
+                                </div>
+                                <div class="style-name">{{ style_info.name }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="style-info" id="styleInfo">
+                        <div class="info-label">当前样式：</div>
+                        <div class="info-value" id="currentStyleName">经典黑白</div>
+                        <div class="info-description" id="currentStyleDesc">传统的黑白二维码，兼容性最好</div>
+                    </div>
+                </div>
             </div>
             
             <div>
@@ -302,5 +357,100 @@ function copyToClipboard(elementId) {
         alert('复制失败，请手动复制');
     });
 }
+
+const QR_ID = {{ qr_code.id }};
+let currentStyle = 'classic';
+
+function selectStyle(styleName) {
+    const styleOptions = document.querySelectorAll('.style-option');
+    styleOptions.forEach(option => {
+        option.classList.remove('selected');
+        if (option.dataset.style === styleName) {
+            option.classList.add('selected');
+        }
+    });
+    
+    const selectedOption = document.querySelector(`.style-option[data-style="${styleName}"]`);
+    if (selectedOption) {
+        document.getElementById('currentStyleName').textContent = selectedOption.dataset.name;
+        document.getElementById('currentStyleDesc').textContent = selectedOption.dataset.description;
+    }
+    
+    currentStyle = styleName;
+    
+    updateQRImage(styleName);
+}
+
+function updateQRImage(styleName) {
+    const qrImage = document.getElementById('qrImage');
+    const qrContainer = qrImage.closest('.qr-container');
+    
+    if (!qrContainer.querySelector('.loading-overlay')) {
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'loading-overlay';
+        loadingOverlay.innerHTML = '<div class="loading-spinner"></div>';
+        qrContainer.style.position = 'relative';
+        qrContainer.appendChild(loadingOverlay);
+    }
+    
+    fetch(`/api/qr/${QR_ID}/style/${styleName}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                qrImage.src = data.qr_image;
+                
+                if (data.style_info) {
+                    document.getElementById('currentStyleName').textContent = data.style_info.name;
+                    document.getElementById('currentStyleDesc').textContent = data.style_info.description;
+                }
+            } else {
+                console.error('Failed to load QR style:', data.error);
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching QR style:', err);
+        })
+        .finally(() => {
+            const loadingOverlay = qrContainer.querySelector('.loading-overlay');
+            if (loadingOverlay) {
+                loadingOverlay.remove();
+            }
+        });
+}
+
+function downloadQRCode() {
+    const downloadBtn = document.getElementById('downloadBtn');
+    const originalText = downloadBtn.textContent;
+    
+    downloadBtn.textContent = '下载中...';
+    downloadBtn.disabled = true;
+    
+    const downloadUrl = `/api/qr/${QR_ID}/download/${currentStyle}`;
+    window.location.href = downloadUrl;
+    
+    setTimeout(() => {
+        downloadBtn.textContent = originalText;
+        downloadBtn.disabled = false;
+    }, 2000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.style-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            const tabName = this.dataset.tab;
+            document.querySelectorAll('.style-content > div').forEach(content => {
+                content.style.display = 'none';
+            });
+            const targetContent = document.getElementById(tabName + 'Tab');
+            if (targetContent) {
+                targetContent.style.display = 'grid';
+            }
+        });
+    });
+});
 </script>
 {% endblock %}
