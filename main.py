@@ -1,75 +1,28 @@
 import asyncio
-import os
 import socket
-import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, Set, List, Optional
+from datetime import datetime
+from typing import Dict, Set, Optional
 
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, Cookie, Depends, HTTPException, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Cookie
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from pydantic import BaseModel
 
 from app.database import Base
-from app.routers import canvas_router, auth_router, admin_router
+from app.routers import canvas_router, auth_router, admin_router, pages_router
 from app import crud
-from app.routers.auth import SESSIONS, get_current_user
-
-BASE_DIR = Path(__file__).resolve().parent
-TEMPLATE_DIR = BASE_DIR / "app" / "templates"
-DB_PATH = BASE_DIR / "canvas.db"
-INDEX_HTML = TEMPLATE_DIR / "index.html"
-ROOM_HTML = TEMPLATE_DIR / "room.html"
-AUTH_HTML = TEMPLATE_DIR / "auth.html"
-ADMIN_HTML = TEMPLATE_DIR / "admin.html"
-
-active_connections: Dict[str, Set[WebSocket]] = {}
-room_last_activity: Dict[str, datetime] = {}
-
-room_html_cache = None
-canvas_html_cache = None
-auth_html_cache = None
-admin_html_cache = None
-
-CLEANUP_INTERVAL = 60
-INACTIVE_TIMEOUT = 300
-
-
-async def get_db(request: Request) -> AsyncSession:
-    async with request.app.state.async_session() as session:
-        yield session
-
-
-async def get_current_admin(
-    request: Request,
-    session_id: Optional[str] = Cookie(None),
-    db: AsyncSession = Depends(get_db)
-) -> Optional[User]:
-    from app.routers.auth import SESSIONS
-    
-    if not session_id or session_id not in SESSIONS:
-        return None
-    
-    user_id = SESSIONS[session_id]
-    user = await crud.get_user_by_id(db, user_id)
-    
-    if user and user.is_banned:
-        if session_id in SESSIONS:
-            del SESSIONS[session_id]
-        return None
-    
-    return user
+from app.core.config import settings
+from app.core.security import get_password_hash, SESSIONS
+from app.core.state import active_connections, room_last_activity
+from app.routers.pages import load_templates
 
 
 async def cleanup_inactive_rooms(app: FastAPI):
     while True:
-        await asyncio.sleep(CLEANUP_INTERVAL)
+        await asyncio.sleep(settings.CLEANUP_INTERVAL)
         
         async with app.state.async_session() as session:
-            inactive_canvases = await crud.get_inactive_canvases(session, INACTIVE_TIMEOUT)
+            inactive_canvases = await crud.get_inactive_canvases(session, settings.INACTIVE_TIMEOUT)
             
             rooms_to_remove = []
             for canvas in inactive_canvases:
@@ -113,20 +66,18 @@ async def migrate_database(engine):
 
 
 async def init_default_admin(engine):
-    from app.routers.auth import get_password_hash
-    
     async with async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)() as session:
-        admin_user = await crud.get_user_by_username(session, "admin")
+        admin_user = await crud.get_user_by_username(session, settings.DEFAULT_ADMIN_USERNAME)
         
         if not admin_user:
-            password_hash = get_password_hash("admin123")
+            password_hash = get_password_hash(settings.DEFAULT_ADMIN_PASSWORD)
             admin_user = await crud.create_user(
                 session,
-                username="admin",
+                username=settings.DEFAULT_ADMIN_USERNAME,
                 password_hash=password_hash,
                 user_type="admin"
             )
-            print("[INIT] Created default admin user: admin / admin123")
+            print(f"[INIT] Created default admin user: {settings.DEFAULT_ADMIN_USERNAME} / {settings.DEFAULT_ADMIN_PASSWORD}")
         else:
             if admin_user.user_type != "admin":
                 await crud.update_user_type(session, admin_user.id, "admin")
@@ -135,13 +86,9 @@ async def init_default_admin(engine):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global room_html_cache, canvas_html_cache, auth_html_cache, admin_html_cache
-    room_html_cache = ROOM_HTML.read_text(encoding="utf-8")
-    canvas_html_cache = INDEX_HTML.read_text(encoding="utf-8")
-    auth_html_cache = AUTH_HTML.read_text(encoding="utf-8")
-    admin_html_cache = ADMIN_HTML.read_text(encoding="utf-8") if ADMIN_HTML.exists() else ""
+    load_templates()
     
-    engine = create_async_engine(f"sqlite+aiosqlite:///{DB_PATH}", echo=False)
+    engine = create_async_engine(settings.DATABASE_URL, echo=False)
     
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -164,262 +111,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Collaborative Canvas", lifespan=lifespan)
 
+app.include_router(pages_router)
 app.include_router(canvas_router, prefix="/api/canvas")
 app.include_router(auth_router)
 app.include_router(admin_router)
 
 
-class RoomInfo(BaseModel):
-    id: str
-    users: int
-    is_private: bool
-    owner: Optional[str]
-
-
-class UserInfo(BaseModel):
-    id: int
-    username: str
-    user_type: str
-
-
-@app.get("/", response_class=HTMLResponse)
-async def get_home(request: Request):
-    return HTMLResponse(content=room_html_cache)
-
-
-@app.get("/login", response_class=HTMLResponse)
-async def get_login_page(request: Request):
-    return HTMLResponse(content=auth_html_cache)
-
-
-@app.get("/admin", response_class=HTMLResponse)
-async def get_admin_page(
-    request: Request,
-    user = Depends(get_current_admin)
-):
-    if not user or user.user_type != "admin":
-        return RedirectResponse(url="/login", status_code=302)
-    return HTMLResponse(content=admin_html_cache)
-
-
-@app.get("/canvas/{room_id}", response_class=HTMLResponse)
-async def get_canvas(
-    room_id: str, 
-    request: Request,
-    user = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    canvas = await crud.get_canvas(db, room_id)
-    
-    if room_id == "default":
-        if not canvas:
-            await crud.create_canvas(db, room_id, owner_id=None, is_private=False)
-        return HTMLResponse(content=canvas_html_cache)
-    
-    if not user:
-        raise HTTPException(status_code=403, detail="请先登录以使用其他画板")
-    
-    if not canvas:
-        user_canvas_count = await crud.get_user_canvas_count(db, user.id)
-        if user.user_type != "vip" and user_canvas_count >= 2:
-            raise HTTPException(status_code=403, detail="普通用户最多只能保留2个画板")
-        canvas = await crud.create_canvas(db, room_id, owner_id=user.id, is_private=False)
-    else:
-        if canvas.is_private and canvas.owner_id != user.id and user.user_type != "vip":
-            raise HTTPException(status_code=403, detail="这是私密画板，仅创建者可访问")
-    
-    return HTMLResponse(content=canvas_html_cache)
-
-
-@app.get("/api/user/info", response_model=Optional[UserInfo])
-async def get_user_info(
-    request: Request,
-    user = Depends(get_current_user)
-):
-    if user:
-        return UserInfo(id=user.id, username=user.username, user_type=user.user_type)
-    return None
-
-
-@app.get("/api/user/canvases")
-async def get_user_canvases(
-    request: Request,
-    user = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    if not user:
-        return []
-    canvases = await crud.get_user_canvases(db, user.id)
-    return [c.to_dict() for c in canvases]
-
-
-@app.post("/api/canvas/{room_id}/create")
-async def create_canvas(
-    room_id: str,
-    request: Request,
-    is_private: bool = False,
-    user = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    if not user:
-        raise HTTPException(status_code=401, detail="请先登录")
-    
-    if room_id == "default":
-        raise HTTPException(status_code=400, detail="不能使用default作为自定义画板名")
-    
-    existing = await crud.get_canvas(db, room_id)
-    if existing:
-        raise HTTPException(status_code=400, detail="该画板已存在")
-    
-    user_canvas_count = await crud.get_user_canvas_count(db, user.id)
-    if user.user_type != "vip" and user_canvas_count >= 2:
-        raise HTTPException(status_code=403, detail="普通用户最多只能保留2个画板")
-    
-    if is_private and user.user_type != "vip":
-        raise HTTPException(status_code=403, detail="仅VIP用户可以创建私密画板")
-    
-    canvas = await crud.create_canvas(db, room_id, owner_id=user.id, is_private=is_private)
-    return {"success": True, "canvas": canvas.to_dict()}
-
-
-@app.get("/api/rooms", response_model=List[RoomInfo])
-async def get_active_rooms(
-    request: Request,
-    user = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    rooms = []
-    
-    default_canvas = await crud.get_canvas(db, "default")
-    if not default_canvas:
-        await crud.create_canvas(db, "default", owner_id=None, is_private=False)
-    
-    rooms.append(RoomInfo(
-        id="default",
-        users=len(active_connections.get("default", set())),
-        is_private=False,
-        owner=None
-    ))
-    
-    from sqlalchemy import select as sa_select
-    from app.models import Canvas
-    
-    query = sa_select(Canvas).where(Canvas.canvas_id != "default")
-    result = await db.execute(query)
-    all_canvases = result.scalars().all()
-    
-    for canvas in all_canvases:
-        if canvas.is_private:
-            if not user:
-                continue
-            if canvas.owner_id != user.id and user.user_type != "vip":
-                continue
-        
-        owner = None
-        if canvas.owner_id:
-            owner_user = await crud.get_user_by_id(db, canvas.owner_id)
-            if owner_user:
-                owner = owner_user.username
-        
-        rooms.append(RoomInfo(
-            id=canvas.canvas_id,
-            users=len(active_connections.get(canvas.canvas_id, set())),
-            is_private=canvas.is_private,
-            owner=owner
-        ))
-    
-    return rooms
-
-
-class CanvasCheckResult(BaseModel):
-    exists: bool
-    can_create: bool
-    can_access: bool
-    is_private: Optional[bool] = None
-    owner: Optional[str] = None
-    reason: Optional[str] = None
-
-
-@app.get("/api/canvas/{room_id}/check", response_model=CanvasCheckResult)
-async def check_canvas(
-    room_id: str,
-    request: Request,
-    user = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    if room_id == "default":
-        return CanvasCheckResult(
-            exists=True,
-            can_create=True,
-            can_access=True,
-            is_private=False,
-            owner=None
-        )
-    
-    canvas = await crud.get_canvas(db, room_id)
-    
-    if canvas:
-        if canvas.is_private:
-            if not user:
-                return CanvasCheckResult(
-                    exists=True,
-                    can_create=False,
-                    can_access=False,
-                    is_private=True,
-                    owner=None,
-                    reason="这是私密画板，请登录"
-                )
-            if canvas.owner_id != user.id and user.user_type != "vip":
-                return CanvasCheckResult(
-                    exists=True,
-                    can_create=False,
-                    can_access=False,
-                    is_private=True,
-                    owner=None,
-                    reason="这是私密画板，仅创建者可访问"
-                )
-        
-        owner = None
-        if canvas.owner_id:
-            owner_user = await crud.get_user_by_id(db, canvas.owner_id)
-            if owner_user:
-                owner = owner_user.username
-        
-        return CanvasCheckResult(
-            exists=True,
-            can_create=False,
-            can_access=True,
-            is_private=canvas.is_private,
-            owner=owner
-        )
-    
-    if not user:
-        return CanvasCheckResult(
-            exists=False,
-            can_create=False,
-            can_access=False,
-            reason="请先登录以创建新画板"
-        )
-    
-    user_canvas_count = await crud.get_user_canvas_count(db, user.id)
-    if user.user_type != "vip" and user_canvas_count >= 2:
-        return CanvasCheckResult(
-            exists=False,
-            can_create=False,
-            can_access=False,
-            reason="普通用户最多只能保留2个画板"
-        )
-    
-    return CanvasCheckResult(
-        exists=False,
-        can_create=True,
-        can_access=True
-    )
-
-
 @app.websocket("/ws/{canvas_id}")
 async def websocket_endpoint(
-    websocket: WebSocket, 
+    websocket: WebSocket,
     canvas_id: str,
     session_id: Optional[str] = Cookie(None)
 ):

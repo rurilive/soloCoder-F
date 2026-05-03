@@ -1,35 +1,14 @@
 import json
 from typing import List
 from fastapi import APIRouter, Depends, Request, HTTPException
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.models import CanvasAction
+from app.core.dependencies import get_db
+from app.schemas.canvas import ActionCreate, ActionResponse
 
 router = APIRouter()
-
-
-async def get_db(request: Request) -> AsyncSession:
-    async with request.app.state.async_session() as session:
-        yield session
-
-
-class ActionCreate(BaseModel):
-    canvas_id: str
-    action_type: str
-    action_data: dict
-
-
-class ActionResponse(BaseModel):
-    id: int
-    canvas_id: str
-    action_type: str
-    action_data: dict
-    sequence: int
-
-    class Config:
-        from_attributes = True
 
 
 @router.post("/actions", response_model=ActionResponse)
