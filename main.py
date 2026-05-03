@@ -45,23 +45,26 @@ async def cleanup_inactive_rooms(app: FastAPI):
     while True:
         await asyncio.sleep(CLEANUP_INTERVAL)
         
-        now = datetime.now()
-        rooms_to_remove = []
-        
-        for room_id, last_active in room_last_activity.items():
-            if room_id == "default":
-                continue
-            if room_id in active_connections and len(active_connections[room_id]) > 0:
-                continue
-            if (now - last_active).total_seconds() >= INACTIVE_TIMEOUT:
+        async with app.state.async_session() as session:
+            inactive_canvases = await crud.get_inactive_canvases(session, INACTIVE_TIMEOUT)
+            
+            rooms_to_remove = []
+            for canvas in inactive_canvases:
+                room_id = canvas.canvas_id
+                
+                if room_id == "default":
+                    continue
+                
+                if room_id in active_connections and len(active_connections[room_id]) > 0:
+                    continue
+                
                 rooms_to_remove.append(room_id)
-        
-        for room_id in rooms_to_remove:
-            async with app.state.async_session() as session:
+            
+            for room_id in rooms_to_remove:
                 await crud.delete_canvas(session, room_id)
-            if room_id in room_last_activity:
-                del room_last_activity[room_id]
-            print(f"[CLEANUP] 删除不活跃画板: {room_id}")
+                if room_id in room_last_activity:
+                    del room_last_activity[room_id]
+                print(f"[CLEANUP] 删除不活跃画板: {room_id}")
 
 
 @asynccontextmanager
@@ -363,6 +366,8 @@ async def websocket_endpoint(
             if not user or (canvas.owner_id != user.id and user.user_type != "vip"):
                 await websocket.close(code=1008)
                 return
+        
+        await crud.update_canvas_activity(db, canvas_id)
     
     await websocket.accept()
     
@@ -383,6 +388,10 @@ async def websocket_endpoint(
         active_connections[canvas_id].remove(websocket)
         if not active_connections[canvas_id]:
             del active_connections[canvas_id]
+        
+        async with websocket.app.state.async_session() as db:
+            await crud.update_canvas_activity(db, canvas_id)
+        
         room_last_activity[canvas_id] = datetime.now()
 
 
