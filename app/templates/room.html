@@ -474,7 +474,14 @@
                 guestInfo.style.display = 'none';
                 userAvatar.textContent = currentUser.username.charAt(0).toUpperCase();
                 userName.textContent = currentUser.username;
-                userType.textContent = currentUser.user_type === 'vip' ? 'VIP用户' : '普通用户';
+                
+                if (currentUser.user_type === 'admin') {
+                    userType.textContent = '管理员';
+                } else if (currentUser.user_type === 'vip') {
+                    userType.textContent = 'VIP用户';
+                } else {
+                    userType.textContent = '普通用户';
+                }
                 userType.className = `user-type ${currentUser.user_type}`;
                 authBtn.textContent = '退出登录';
                 authBtn.className = 'auth-btn logout-btn';
@@ -483,11 +490,13 @@
                 roomIdInput.disabled = false;
                 if (currentUser.user_type === 'normal') {
                     canvasLimit.textContent = '(最多保留2个画板)';
+                } else if (currentUser.user_type === 'admin') {
+                    canvasLimit.textContent = '(管理员无限制)';
                 } else {
                     canvasLimit.textContent = '(VIP无限制)';
                 }
 
-                if (currentUser.user_type === 'vip') {
+                if (currentUser.user_type === 'vip' || currentUser.user_type === 'admin') {
                     privateCheckbox.classList.remove('disabled');
                     isPrivateInput.disabled = false;
                     privateHint.style.display = 'block';
