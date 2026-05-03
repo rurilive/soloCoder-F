@@ -1,8 +1,16 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import os
+from werkzeug.utils import secure_filename
 
 db = SQLAlchemy()
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def create_app():
     import os
@@ -12,6 +20,12 @@ def create_app():
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///qr_tracker.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    app.config['UPLOAD_FOLDER'] = os.path.join(base_dir, 'uploads')
+    app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
+    
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     
     db.init_app(app)
     

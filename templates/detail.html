@@ -52,11 +52,17 @@
                             <button id="downloadBtn" class="btn btn-secondary btn-sm" onclick="downloadQRCode()">
                                 下载当前样式
                             </button>
+                            <button id="resetBtn" class="btn btn-secondary btn-sm" onclick="resetQRCode()" style="margin-left: 8px;">
+                                重置
+                            </button>
                         </div>
                     </div>
                     
                     <div class="style-tabs">
                         <button class="style-tab active" data-tab="presets">预设样式</button>
+                        <button class="style-tab" data-tab="logo">中心Logo</button>
+                        <button class="style-tab" data-tab="background">背景嵌入</button>
+                        <button class="style-tab" data-tab="artistic">艺术融合</button>
                     </div>
                     
                     <div class="style-content" id="styleContent">
@@ -88,6 +94,161 @@
                                 <div class="style-name">{{ style_info.name }}</div>
                             </div>
                             {% endfor %}
+                        </div>
+                        
+                        <div class="embed-panel" id="logoTab" style="display: none;">
+                            <div class="upload-section">
+                                <div class="upload-area" id="logoUploadArea" onclick="document.getElementById('logoFileInput').click()">
+                                    <input type="file" id="logoFileInput" accept="image/*" style="display: none;" onchange="handleLogoUpload(event)">
+                                    <div class="upload-icon">📤</div>
+                                    <div class="upload-text">点击上传Logo图片</div>
+                                    <div class="upload-hint">支持 PNG、JPG、GIF、WebP</div>
+                                </div>
+                                <div class="upload-preview" id="logoPreview" style="display: none;">
+                                    <img id="logoPreviewImg" src="" alt="Logo Preview">
+                                    <button class="btn btn-danger btn-sm" onclick="clearLogo()" style="margin-top: 10px;">移除Logo</button>
+                                </div>
+                            </div>
+                            
+                            <div class="options-panel" id="logoOptions" style="display: none; margin-top: 20px;">
+                                <h4 style="margin-bottom: 15px; color: #333;">Logo设置</h4>
+                                
+                                <div class="form-group">
+                                    <label>Logo大小</label>
+                                    <input type="range" id="logoSizeSlider" min="10" max="50" value="25" class="slider" oninput="updateLogoSize(this.value)">
+                                    <div class="slider-value" id="logoSizeValue">25%</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="logoRound" checked onchange="updateLogoOptions()">
+                                        圆形Logo
+                                    </label>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="logoBorder" checked onchange="updateLogoOptions()">
+                                        白色边框
+                                    </label>
+                                </div>
+                                
+                                <div class="form-group" id="logoBorderColorGroup">
+                                    <label>边框颜色</label>
+                                    <input type="color" id="logoBorderColor" value="#ffffff" onchange="updateLogoOptions()">
+                                </div>
+                                
+                                <div class="form-group" id="logoBorderWidthGroup">
+                                    <label>边框宽度</label>
+                                    <input type="range" id="logoBorderWidthSlider" min="0" max="10" value="4" class="slider" oninput="updateLogoBorderWidth(this.value)">
+                                    <div class="slider-value" id="logoBorderWidthValue">4px</div>
+                                </div>
+                                
+                                <button class="btn btn-primary" onclick="applyLogoToQR()" style="margin-top: 10px; width: 100%;">
+                                    应用Logo到二维码
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="embed-panel" id="backgroundTab" style="display: none;">
+                            <div class="upload-section">
+                                <div class="upload-area" id="bgUploadArea" onclick="document.getElementById('bgFileInput').click()">
+                                    <input type="file" id="bgFileInput" accept="image/*" style="display: none;" onchange="handleBgUpload(event)">
+                                    <div class="upload-icon">🖼️</div>
+                                    <div class="upload-text">点击上传背景图片</div>
+                                    <div class="upload-hint">支持 PNG、JPG、GIF、WebP</div>
+                                </div>
+                                <div class="upload-preview" id="bgPreview" style="display: none;">
+                                    <img id="bgPreviewImg" src="" alt="Background Preview" style="max-height: 150px;">
+                                    <button class="btn btn-danger btn-sm" onclick="clearBackground()" style="margin-top: 10px;">移除背景</button>
+                                </div>
+                            </div>
+                            
+                            <div class="options-panel" id="bgOptions" style="display: none; margin-top: 20px;">
+                                <h4 style="margin-bottom: 15px; color: #333;">背景嵌入设置</h4>
+                                
+                                <div class="form-group">
+                                    <label>二维码位置</label>
+                                    <select id="qrPosition" class="form-control" onchange="updateBgOptions()">
+                                        <option value="center">居中</option>
+                                        <option value="top_left">左上</option>
+                                        <option value="top_right">右上</option>
+                                        <option value="bottom_left">左下</option>
+                                        <option value="bottom_right">右下</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>二维码大小</label>
+                                    <input type="range" id="qrBgSizeSlider" min="20" max="90" value="60" class="slider" oninput="updateQrBgSize(this.value)">
+                                    <div class="slider-value" id="qrBgSizeValue">60%</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>二维码透明度</label>
+                                    <input type="range" id="qrBgOpacitySlider" min="10" max="100" value="100" class="slider" oninput="updateQrBgOpacity(this.value)">
+                                    <div class="slider-value" id="qrBgOpacityValue">100%</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="qrBgEnabled" checked onchange="updateBgOptions()">
+                                        半透明背景板（提高可读性）
+                                    </label>
+                                </div>
+                                
+                                <button class="btn btn-primary" onclick="applyBackgroundToQR()" style="margin-top: 10px; width: 100%;">
+                                    应用背景
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="embed-panel" id="artisticTab" style="display: none;">
+                            <div class="upload-section">
+                                <div class="upload-area" id="artUploadArea" onclick="document.getElementById('artFileInput').click()">
+                                    <input type="file" id="artFileInput" accept="image/*" style="display: none;" onchange="handleArtUpload(event)">
+                                    <div class="upload-icon">🎨</div>
+                                    <div class="upload-text">点击上传艺术图片</div>
+                                    <div class="upload-hint">支持 PNG、JPG、GIF、WebP</div>
+                                </div>
+                                <div class="upload-preview" id="artPreview" style="display: none;">
+                                    <img id="artPreviewImg" src="" alt="Art Preview" style="max-height: 150px;">
+                                    <button class="btn btn-danger btn-sm" onclick="clearArtImage()" style="margin-top: 10px;">移除图片</button>
+                                </div>
+                            </div>
+                            
+                            <div class="options-panel" id="artOptions" style="display: none; margin-top: 20px;">
+                                <h4 style="margin-bottom: 15px; color: #333;">艺术融合设置</h4>
+                                
+                                <div class="form-group">
+                                    <label>融合模式</label>
+                                    <select id="blendMode" class="form-control" onchange="updateArtOptions()">
+                                        <option value="overlay">叠加 - 简单透明度叠加</option>
+                                        <option value="multiply">正片叠底 - 保留图片暗部</option>
+                                        <option value="colorize">着色 - 用图片颜色替换</option>
+                                        <option value="silhouette">剪影 - 白色部分镂空</option>
+                                    </select>
+                                    <div class="option-hint" id="blendModeHint" style="margin-top: 5px; font-size: 12px; color: #777;">
+                                        简单的透明度叠加效果
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>二维码透明度</label>
+                                    <input type="range" id="qrArtOpacitySlider" min="10" max="100" value="70" class="slider" oninput="updateQrArtOpacity(this.value)">
+                                    <div class="slider-value" id="qrArtOpacityValue">70%</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>图片透明度</label>
+                                    <input type="range" id="artOpacitySlider" min="10" max="100" value="30" class="slider" oninput="updateArtOpacity(this.value)">
+                                    <div class="slider-value" id="artOpacityValue">30%</div>
+                                </div>
+                                
+                                <button class="btn btn-primary" onclick="applyArtToQR()" style="margin-top: 10px; width: 100%;">
+                                    应用艺术效果
+                                </button>
+                            </div>
                         </div>
                     </div>
                     
@@ -360,6 +521,14 @@ function copyToClipboard(elementId) {
 
 const QR_ID = {{ qr_code.id }};
 let currentStyle = 'classic';
+let currentEmbedMode = null;
+
+let uploadedLogoImage = null;
+let uploadedBgImage = null;
+let uploadedArtImage = null;
+
+let originalQrImage = '{{ qr_image }}';
+let currentQrImage = '{{ qr_image }}';
 
 function selectStyle(styleName) {
     const styleOptions = document.querySelectorAll('.style-option');
@@ -377,6 +546,7 @@ function selectStyle(styleName) {
     }
     
     currentStyle = styleName;
+    currentEmbedMode = null;
     
     updateQRImage(styleName);
 }
@@ -398,6 +568,7 @@ function updateQRImage(styleName) {
         .then(data => {
             if (data.success) {
                 qrImage.src = data.qr_image;
+                currentQrImage = data.qr_image;
                 
                 if (data.style_info) {
                     document.getElementById('currentStyleName').textContent = data.style_info.name;
@@ -425,13 +596,433 @@ function downloadQRCode() {
     downloadBtn.textContent = '下载中...';
     downloadBtn.disabled = true;
     
-    const downloadUrl = `/api/qr/${QR_ID}/download/${currentStyle}`;
-    window.location.href = downloadUrl;
+    if (currentEmbedMode && currentQrImage) {
+        fetch(`/api/qr/${QR_ID}/download-custom`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                qr_image: currentQrImage
+            })
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.blob();
+            }
+            throw new Error('Download failed');
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `qr_code_${currentEmbedMode}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(err => {
+            console.error('Download error:', err);
+            alert('下载失败，请重试');
+        })
+        .finally(() => {
+            downloadBtn.textContent = originalText;
+            downloadBtn.disabled = false;
+        });
+    } else {
+        const downloadUrl = `/api/qr/${QR_ID}/download/${currentStyle}`;
+        window.location.href = downloadUrl;
+        
+        setTimeout(() => {
+            downloadBtn.textContent = originalText;
+            downloadBtn.disabled = false;
+        }, 2000);
+    }
+}
+
+function resetQRCode() {
+    const qrImage = document.getElementById('qrImage');
+    qrImage.src = originalQrImage;
+    currentQrImage = originalQrImage;
+    currentStyle = 'classic';
+    currentEmbedMode = null;
     
-    setTimeout(() => {
-        downloadBtn.textContent = originalText;
-        downloadBtn.disabled = false;
-    }, 2000);
+    document.getElementById('currentStyleName').textContent = '经典黑白';
+    document.getElementById('currentStyleDesc').textContent = '传统的黑白二维码，兼容性最好';
+    
+    const styleOptions = document.querySelectorAll('.style-option');
+    styleOptions.forEach(option => {
+        option.classList.remove('selected');
+        if (option.dataset.style === 'classic') {
+            option.classList.add('selected');
+        }
+    });
+    
+    clearLogo();
+    clearBackground();
+    clearArtImage();
+    
+    const tabs = document.querySelectorAll('.style-tab');
+    tabs.forEach(t => t.classList.remove('active'));
+    tabs[0].classList.add('active');
+    
+    document.querySelectorAll('.style-content > div').forEach(content => {
+        content.style.display = 'none';
+    });
+    document.getElementById('presetsTab').style.display = 'grid';
+}
+
+function handleLogoUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    uploadImage(file, 'logo');
+}
+
+function handleBgUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    uploadImage(file, 'background');
+}
+
+function handleArtUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    uploadImage(file, 'artistic');
+}
+
+function uploadImage(file, type) {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    let previewId, uploadAreaId, optionsId;
+    
+    if (type === 'logo') {
+        previewId = 'logoPreview';
+        uploadAreaId = 'logoUploadArea';
+        optionsId = 'logoOptions';
+    } else if (type === 'background') {
+        previewId = 'bgPreview';
+        uploadAreaId = 'bgUploadArea';
+        optionsId = 'bgOptions';
+    } else if (type === 'artistic') {
+        previewId = 'artPreview';
+        uploadAreaId = 'artUploadArea';
+        optionsId = 'artOptions';
+    }
+    
+    const uploadArea = document.getElementById(uploadAreaId);
+    const originalHTML = uploadArea.innerHTML;
+    uploadArea.innerHTML = '<div class="loading-spinner"></div><div style="margin-top: 10px;">上传中...</div>';
+    
+    fetch('/api/upload/image', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (type === 'logo') {
+                uploadedLogoImage = data.image;
+                document.getElementById('logoPreviewImg').src = data.preview;
+            } else if (type === 'background') {
+                uploadedBgImage = data.image;
+                document.getElementById('bgPreviewImg').src = data.preview;
+            } else if (type === 'artistic') {
+                uploadedArtImage = data.image;
+                document.getElementById('artPreviewImg').src = data.preview;
+            }
+            
+            document.getElementById(uploadAreaId).style.display = 'none';
+            document.getElementById(previewId).style.display = 'block';
+            document.getElementById(optionsId).style.display = 'block';
+        } else {
+            alert('上传失败: ' + data.error);
+            uploadArea.innerHTML = originalHTML;
+        }
+    })
+    .catch(err => {
+        console.error('Upload error:', err);
+        alert('上传失败，请重试');
+        uploadArea.innerHTML = originalHTML;
+    });
+}
+
+function clearLogo() {
+    uploadedLogoImage = null;
+    document.getElementById('logoPreview').style.display = 'none';
+    document.getElementById('logoOptions').style.display = 'none';
+    document.getElementById('logoUploadArea').style.display = 'block';
+    document.getElementById('logoFileInput').value = '';
+}
+
+function clearBackground() {
+    uploadedBgImage = null;
+    document.getElementById('bgPreview').style.display = 'none';
+    document.getElementById('bgOptions').style.display = 'none';
+    document.getElementById('bgUploadArea').style.display = 'block';
+    document.getElementById('bgFileInput').value = '';
+}
+
+function clearArtImage() {
+    uploadedArtImage = null;
+    document.getElementById('artPreview').style.display = 'none';
+    document.getElementById('artOptions').style.display = 'none';
+    document.getElementById('artUploadArea').style.display = 'block';
+    document.getElementById('artFileInput').value = '';
+}
+
+function updateLogoSize(value) {
+    document.getElementById('logoSizeValue').textContent = value + '%';
+}
+
+function updateLogoBorderWidth(value) {
+    document.getElementById('logoBorderWidthValue').textContent = value + 'px';
+}
+
+function updateLogoOptions() {
+    const logoBorder = document.getElementById('logoBorder').checked;
+    const colorGroup = document.getElementById('logoBorderColorGroup');
+    const widthGroup = document.getElementById('logoBorderWidthGroup');
+    
+    if (logoBorder) {
+        colorGroup.style.display = 'block';
+        widthGroup.style.display = 'block';
+    } else {
+        colorGroup.style.display = 'none';
+        widthGroup.style.display = 'none';
+    }
+}
+
+function updateQrBgSize(value) {
+    document.getElementById('qrBgSizeValue').textContent = value + '%';
+}
+
+function updateQrBgOpacity(value) {
+    document.getElementById('qrBgOpacityValue').textContent = value + '%';
+}
+
+function updateBgOptions() {
+}
+
+function updateQrArtOpacity(value) {
+    document.getElementById('qrArtOpacityValue').textContent = value + '%';
+}
+
+function updateArtOpacity(value) {
+    document.getElementById('artOpacityValue').textContent = value + '%';
+}
+
+function updateArtOptions() {
+    const blendMode = document.getElementById('blendMode').value;
+    const hints = {
+        'overlay': '简单的透明度叠加效果',
+        'multiply': '将图片暗部颜色作为二维码颜色',
+        'colorize': '用图片的颜色替换二维码的黑色部分',
+        'silhouette': '二维码白色部分变为透明，显示背景图片'
+    };
+    document.getElementById('blendModeHint').textContent = hints[blendMode] || '';
+}
+
+function applyLogoToQR() {
+    if (!uploadedLogoImage) {
+        alert('请先上传Logo图片');
+        return;
+    }
+    
+    const qrImage = document.getElementById('qrImage');
+    const qrContainer = qrImage.closest('.qr-container');
+    
+    if (!qrContainer.querySelector('.loading-overlay')) {
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'loading-overlay';
+        loadingOverlay.innerHTML = '<div class="loading-spinner"></div>';
+        qrContainer.style.position = 'relative';
+        qrContainer.appendChild(loadingOverlay);
+    }
+    
+    const logoSizeRatio = parseFloat(document.getElementById('logoSizeSlider').value) / 100;
+    const logoRound = document.getElementById('logoRound').checked;
+    const logoBorder = document.getElementById('logoBorder').checked;
+    const logoBorderColorHex = document.getElementById('logoBorderColor').value;
+    const logoBorderWidth = parseInt(document.getElementById('logoBorderWidthSlider').value);
+    
+    const logoBorderColor = hexToRgb(logoBorderColorHex);
+    
+    fetch(`/api/qr/${QR_ID}/with-logo`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            logo_image: uploadedLogoImage,
+            style: currentStyle,
+            logo_size_ratio: logoSizeRatio,
+            logo_round: logoRound,
+            logo_border: logoBorder,
+            logo_border_color: logoBorderColor,
+            logo_border_width: logoBorderWidth
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            qrImage.src = data.qr_image;
+            currentQrImage = data.qr_image;
+            currentEmbedMode = 'logo';
+            
+            document.getElementById('currentStyleName').textContent = '中心Logo';
+            document.getElementById('currentStyleDesc').textContent = 'Logo已嵌入到二维码中心';
+        } else {
+            alert('生成失败: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert('生成失败，请重试');
+    })
+    .finally(() => {
+        const loadingOverlay = qrContainer.querySelector('.loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.remove();
+        }
+    });
+}
+
+function applyBackgroundToQR() {
+    if (!uploadedBgImage) {
+        alert('请先上传背景图片');
+        return;
+    }
+    
+    const qrImage = document.getElementById('qrImage');
+    const qrContainer = qrImage.closest('.qr-container');
+    
+    if (!qrContainer.querySelector('.loading-overlay')) {
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'loading-overlay';
+        loadingOverlay.innerHTML = '<div class="loading-spinner"></div>';
+        qrContainer.style.position = 'relative';
+        qrContainer.appendChild(loadingOverlay);
+    }
+    
+    const qrPosition = document.getElementById('qrPosition').value;
+    const qrSizeRatio = parseFloat(document.getElementById('qrBgSizeSlider').value) / 100;
+    const qrOpacity = parseFloat(document.getElementById('qrBgOpacitySlider').value) / 100;
+    const qrBgEnabled = document.getElementById('qrBgEnabled').checked;
+    
+    const qrBgColor = qrBgEnabled ? [255, 255, 255, 200] : null;
+    
+    fetch(`/api/qr/${QR_ID}/on-background`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            background_image: uploadedBgImage,
+            style: currentStyle,
+            qr_position: qrPosition,
+            qr_size_ratio: qrSizeRatio,
+            qr_opacity: qrOpacity,
+            qr_padding: 20,
+            qr_background_enabled: qrBgEnabled,
+            qr_background_color: qrBgColor
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            qrImage.src = data.qr_image;
+            currentQrImage = data.qr_image;
+            currentEmbedMode = 'background';
+            
+            document.getElementById('currentStyleName').textContent = '背景嵌入';
+            document.getElementById('currentStyleDesc').textContent = '二维码已叠加到背景图片上';
+        } else {
+            alert('生成失败: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert('生成失败，请重试');
+    })
+    .finally(() => {
+        const loadingOverlay = qrContainer.querySelector('.loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.remove();
+        }
+    });
+}
+
+function applyArtToQR() {
+    if (!uploadedArtImage) {
+        alert('请先上传艺术图片');
+        return;
+    }
+    
+    const qrImage = document.getElementById('qrImage');
+    const qrContainer = qrImage.closest('.qr-container');
+    
+    if (!qrContainer.querySelector('.loading-overlay')) {
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'loading-overlay';
+        loadingOverlay.innerHTML = '<div class="loading-spinner"></div>';
+        qrContainer.style.position = 'relative';
+        qrContainer.appendChild(loadingOverlay);
+    }
+    
+    const blendMode = document.getElementById('blendMode').value;
+    const qrOpacity = parseFloat(document.getElementById('qrArtOpacitySlider').value) / 100;
+    const artOpacity = parseFloat(document.getElementById('artOpacitySlider').value) / 100;
+    
+    fetch(`/api/qr/${QR_ID}/artistic`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            art_image: uploadedArtImage,
+            style: currentStyle,
+            blend_mode: blendMode,
+            qr_opacity: qrOpacity,
+            art_opacity: artOpacity
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            qrImage.src = data.qr_image;
+            currentQrImage = data.qr_image;
+            currentEmbedMode = 'artistic';
+            
+            document.getElementById('currentStyleName').textContent = '艺术融合';
+            document.getElementById('currentStyleDesc').textContent = '二维码已与图片进行艺术化融合';
+        } else {
+            alert('生成失败: ' + data.error);
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert('生成失败，请重试');
+    })
+    .finally(() => {
+        const loadingOverlay = qrContainer.querySelector('.loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.remove();
+        }
+    });
+}
+
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? [
+        parseInt(result[1], 16),
+        parseInt(result[2], 16),
+        parseInt(result[3], 16)
+    ] : [255, 255, 255];
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -445,9 +1036,14 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.style-content > div').forEach(content => {
                 content.style.display = 'none';
             });
+            
             const targetContent = document.getElementById(tabName + 'Tab');
             if (targetContent) {
-                targetContent.style.display = 'grid';
+                if (tabName === 'presets') {
+                    targetContent.style.display = 'grid';
+                } else {
+                    targetContent.style.display = 'block';
+                }
             }
         });
     });
