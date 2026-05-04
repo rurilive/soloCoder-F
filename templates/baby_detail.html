@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ baby.name }}的成长记录 - 幼儿成长记录系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+        
+        .baby-header-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .baby-info-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .baby-name-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .baby-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5em;
+            color: white;
+        }
+        
+        .baby-name-detail {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .baby-gender-age {
+            font-size: 1.1em;
+            color: #666;
+        }
+        
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-growth {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .btn-vaccine {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        
+        .btn-milestone {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 10px 25px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            background: white;
+            color: #667eea;
+        }
+        
+        .tab:hover:not(.active) {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .section-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .record-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .record-item {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .record-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .record-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .record-date {
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .record-details {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #666;
+        }
+        
+        .detail-item strong {
+            color: #333;
+        }
+        
+        .delete-btn {
+            background: #ff5252;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        
+        .delete-btn:hover {
+            background: #ff1744;
+        }
+        
+        .empty-record {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .milestone-category {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        
+        .category-语言 {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .category-运动 {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+        
+        .category-社交 {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        
+        .category-认知 {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+        
+        .category-其他 {
+            background: #f5f5f5;
+            color: #616161;
+        }
+        
+        .notes {
+            color: #666;
+            font-size: 0.95em;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">← 返回首页</a>
+        
+        <div class="baby-header-card">
+            <div class="baby-info-top">
+                <div class="baby-name-section">
+                    <div class="baby-avatar">
+                        {% if baby.gender == '男' %}👦{% else %}👧{% endif %}
+                    </div>
+                    <div>
+                        <div class="baby-name-detail">{{ baby.name }}</div>
+                        <div class="baby-gender-age">
+                            {% if baby.gender == '男' %}男孩{% else %}女孩{% endif %} | 
+                            出生日期: {{ baby.birth_date }} | 
+                            出生: {{ baby.birth_weight }}kg / {{ baby.birth_height }}cm
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="quick-actions">
+                    <a href="/growth/add/{{ baby.id }}" class="action-btn btn-growth">📏 记录身高体重</a>
+                    <a href="/vaccine/add/{{ baby.id }}" class="action-btn btn-vaccine">💉 记录疫苗接种</a>
+                    <a href="/milestone/add/{{ baby.id }}" class="action-btn btn-milestone">⭐ 记录里程碑</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 成长记录 -->
+        <div class="section-card">
+            <div class="section-title">
+                📏 身高体重记录
+            </div>
+            
+            {% if growth_records %}
+            <div class="record-list">
+                {% for record in growth_records %}
+                <div class="record-item">
+                    <div class="record-header">
+                        <span class="record-date">{{ record.record_date }}</span>
+                        <form action="/growth/delete/{{ record.id }}" method="post" style="display:inline;">
+                            <button type="submit" class="delete-btn" onclick="return confirm('确定要删除这条记录吗？')">删除</button>
+                        </form>
+                    </div>
+                    <div class="record-details">
+                        <div class="detail-item">
+                            <strong>体重:</strong> {{ record.weight }} kg
+                        </div>
+                        <div class="detail-item">
+                            <strong>身高:</strong> {{ record.height }} cm
+                        </div>
+                        {% if record.head_circumference %}
+                        <div class="detail-item">
+                            <strong>头围:</strong> {{ record.head_circumference }} cm
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if record.notes %}
+                    <div class="notes">备注: {{ record.notes }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-record">
+                还没有身高体重记录，
+                <a href="/growth/add/{{ baby.id }}">点击这里</a>
+                添加第一条记录吧！
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- 疫苗接种 -->
+        <div class="section-card">
+            <div class="section-title">
+                💉 疫苗接种记录
+            </div>
+            
+            {% if vaccines %}
+            <div class="record-list">
+                {% for vaccine in vaccines %}
+                <div class="record-item">
+                    <div class="record-header">
+                        <span class="record-date">{{ vaccine.vaccine_name }} ({{ vaccine.vaccine_date }})</span>
+                        <form action="/vaccine/delete/{{ vaccine.id }}" method="post" style="display:inline;">
+                            <button type="submit" class="delete-btn" onclick="return confirm('确定要删除这条记录吗？')">删除</button>
+                        </form>
+                    </div>
+                    <div class="record-details">
+                        {% if vaccine.dose %}
+                        <div class="detail-item">
+                            <strong>剂量:</strong> {{ vaccine.dose }}
+                        </div>
+                        {% endif %}
+                        {% if vaccine.reaction %}
+                        <div class="detail-item">
+                            <strong>反应:</strong> {{ vaccine.reaction }}
+                        </div>
+                        {% endif %}
+                        {% if vaccine.next_due_date %}
+                        <div class="detail-item">
+                            <strong>下次接种:</strong> {{ vaccine.next_due_date }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if vaccine.notes %}
+                    <div class="notes">备注: {{ vaccine.notes }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-record">
+                还没有疫苗接种记录，
+                <a href="/vaccine/add/{{ baby.id }}">点击这里</a>
+                添加第一条记录吧！
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- 里程碑 -->
+        <div class="section-card">
+            <div class="section-title">
+                ⭐ 成长里程碑
+            </div>
+            
+            {% if milestones %}
+            <div class="record-list">
+                {% for milestone in milestones %}
+                <div class="record-item">
+                    <div class="record-header">
+                        <span class="record-date">{{ milestone.milestone_date }}</span>
+                        <form action="/milestone/delete/{{ milestone.id }}" method="post" style="display:inline;">
+                            <button type="submit" class="delete-btn" onclick="return confirm('确定要删除这条记录吗？')">删除</button>
+                        </form>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <span style="font-weight: bold; font-size: 1.1em; margin-right: 10px;">{{ milestone.title }}</span>
+                        <span class="milestone-category category-{{ milestone.category }}">{{ milestone.category }}</span>
+                    </div>
+                    {% if milestone.description %}
+                    <div style="color: #666; margin-bottom: 10px;">{{ milestone.description }}</div>
+                    {% endif %}
+                    {% if milestone.notes %}
+                    <div class="notes">备注: {{ milestone.notes }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-record">
+                还没有成长里程碑记录，
+                <a href="/milestone/add/{{ baby.id }}">点击这里</a>
+                记录宝宝的第一次说话、第一次走路等珍贵时刻！
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

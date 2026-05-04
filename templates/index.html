@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幼儿成长记录系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .add-btn {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .add-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .baby-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+        
+        .baby-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .baby-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        .baby-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .baby-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .baby-gender {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .gender-boy {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .gender-girl {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+        
+        .baby-info {
+            margin-bottom: 20px;
+        }
+        
+        .info-row {
+            display: flex;
+            margin-bottom: 10px;
+            color: #666;
+        }
+        
+        .info-label {
+            width: 80px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .view-btn {
+            display: block;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .view-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        .empty-state {
+            text-align: center;
+            background: white;
+            border-radius: 15px;
+            padding: 60px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .empty-state h2 {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .empty-state p {
+            color: #999;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👶 幼儿成长记录系统</h1>
+            <p>记录宝宝成长的每一个珍贵瞬间</p>
+        </div>
+        
+        <a href="/baby/add" class="add-btn">+ 添加新宝宝</a>
+        
+        {% if babies %}
+        <div class="baby-list">
+            {% for baby in babies %}
+            <div class="baby-card">
+                <div class="baby-header">
+                    <span class="baby-name">{{ baby.name }}</span>
+                    <span class="baby-gender {% if baby.gender == '男' %}gender-boy{% else %}gender-girl{% endif %}">
+                        {% if baby.gender == '男' %}👦 男孩{% else %}👧 女孩{% endif %}
+                    </span>
+                </div>
+                
+                <div class="baby-info">
+                    <div class="info-row">
+                        <span class="info-label">出生日期:</span>
+                        <span>{{ baby.birth_date }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">出生体重:</span>
+                        <span>{{ baby.birth_weight }} kg</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">出生身高:</span>
+                        <span>{{ baby.birth_height }} cm</span>
+                    </div>
+                </div>
+                
+                <a href="/baby/{{ baby.id }}" class="view-btn">查看详情 →</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h2>还没有宝宝信息</h2>
+            <p>点击上方按钮添加您的第一个宝宝吧！</p>
+            <a href="/baby/add" class="add-btn">+ 添加新宝宝</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

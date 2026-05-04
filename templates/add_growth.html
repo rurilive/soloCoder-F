@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>记录身高体重 - 幼儿成长记录系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .form-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .required {
+            color: #e53935;
+        }
+        
+        .optional {
+            color: #999;
+            font-weight: normal;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/baby/{{ baby.id }}" class="back-btn">← 返回宝宝详情</a>
+        
+        <div class="header">
+            <h1>📏 记录身高体重</h1>
+            <p>为 {{ baby.name }} 记录身高体重数据</p>
+        </div>
+        
+        <div class="form-card">
+            <form action="/growth/add/{{ baby.id }}" method="post">
+                <div class="form-group">
+                    <label for="record_date">记录日期 <span class="required">*</span></label>
+                    <input type="date" id="record_date" name="record_date" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="weight">体重 (kg) <span class="required">*</span></label>
+                        <input type="number" id="weight" name="weight" step="0.01" min="0.5" max="50" required placeholder="例如: 8.5">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="height">身高 (cm) <span class="required">*</span></label>
+                        <input type="number" id="height" name="height" step="0.1" min="30" max="150" required placeholder="例如: 70">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="head_circumference">头围 (cm) <span class="optional">(选填)</span></label>
+                    <input type="number" id="head_circumference" name="head_circumference" step="0.1" min="20" max="60" placeholder="例如: 42">
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">备注 <span class="optional">(选填)</span></label>
+                    <textarea id="notes" name="notes" placeholder="添加一些备注信息..."></textarea>
+                </div>
+                
+                <div class="btn-group">
+                    <a href="/baby/{{ baby.id }}" class="btn btn-secondary">取消</a>
+                    <button type="submit" class="btn btn-primary">保存记录</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // 设置默认日期为今天
+        document.getElementById('record_date').valueAsDate = new Date();
+    </script>
+</body>
+</html>
