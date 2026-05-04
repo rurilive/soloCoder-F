@@ -11,10 +11,8 @@ from pydantic import BaseModel
 
 os.makedirs("static", exist_ok=True)
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./baby_growth.db"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+SQLALCHEMY_DATABASE_URL = "mysql+pymysql://OnGMpLtFPNHcSbbtI7lu:lsTiBCoLk3cWvQKMZ4Mq@64.83.36.96:53306/cf?charset=utf8mb4"
+engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
