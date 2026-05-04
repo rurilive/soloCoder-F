@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ baby.name }}的成长曲线 - 幼儿成长记录系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+        
+        .header-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .baby-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .baby-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            color: white;
+        }
+        
+        .baby-name {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .baby-details {
+            color: #666;
+            font-size: 1em;
+        }
+        
+        .chart-tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .chart-tab {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            color: #667eea;
+            border: 2px solid #667eea;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .chart-tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .chart-tab:hover:not(.active) {
+            background: rgba(102, 126, 234, 0.1);
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 500px;
+            width: 100%;
+        }
+        
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .legend-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+        
+        .legend-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .no-data h3 {
+            margin-bottom: 15px;
+            color: #666;
+        }
+        
+        .quick-links {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .quick-link-btn {
+            padding: 10px 20px;
+            background: #e3f2fd;
+            color: #1976d2;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .quick-link-btn:hover {
+            background: #bbdefb;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/baby/{{ baby.id }}" class="back-btn">← 返回宝宝详情</a>
+        
+        <div class="header-card">
+            <div class="header-content">
+                <div class="baby-info">
+                    <div class="baby-avatar">
+                        {% if baby.gender == '男' %}👦{% else %}👧{% endif %}
+                    </div>
+                    <div>
+                        <div class="baby-name">{{ baby.name }}的成长曲线</div>
+                        <div class="baby-details">
+                            {% if baby.gender == '男' %}男孩{% else %}女孩{% endif %} | 
+                            出生日期: {{ baby.birth_date }} | 
+                            出生: {{ baby.birth_weight }}kg / {{ baby.birth_height }}cm
+                        </div>
+                    </div>
+                </div>
+                <div class="quick-links">
+                    <a href="/growth/add/{{ baby.id }}" class="quick-link-btn">📏 添加成长记录</a>
+                    <a href="/baby/{{ baby.id }}" class="quick-link-btn">📋 查看详情</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chart-tabs">
+            <button class="chart-tab active" data-chart="height">📏 身高曲线</button>
+            <button class="chart-tab" data-chart="weight">⚖️ 体重曲线</button>
+            <button class="chart-tab" data-chart="head">👤 头围曲线</button>
+            <button class="chart-tab" data-chart="bmi">📊 BMI曲线</button>
+        </div>
+        
+        <div id="height-chart" class="chart-container">
+            <div class="chart-title">📏 身高增长曲线 (cm)</div>
+            <div class="chart-wrapper">
+                <canvas id="heightCanvas"></canvas>
+            </div>
+            <div class="legend-info">
+                <div class="legend-title">图例说明</div>
+                <div class="legend-items">
+                    <div class="legend-item"><span class="legend-color" style="background: #667eea;"></span> {{ baby.name }}的身高</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #4caf50;"></span> 标准中位数 (P50)</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #81c784;"></span> 正常范围 (P15-P85)</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #ff9800;"></span> 偏矮/偏高范围 (P3-P15, P85-P97)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="weight-chart" class="chart-container" style="display: none;">
+            <div class="chart-title">⚖️ 体重增长曲线 (kg)</div>
+            <div class="chart-wrapper">
+                <canvas id="weightCanvas"></canvas>
+            </div>
+            <div class="legend-info">
+                <div class="legend-title">图例说明</div>
+                <div class="legend-items">
+                    <div class="legend-item"><span class="legend-color" style="background: #667eea;"></span> {{ baby.name }}的体重</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #4caf50;"></span> 标准中位数 (P50)</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #81c784;"></span> 正常范围 (P15-P85)</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #ff9800;"></span> 偏轻/偏重范围 (P3-P15, P85-P97)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="head-chart" class="chart-container" style="display: none;">
+            <div class="chart-title">👤 头围增长曲线 (cm)</div>
+            <div class="chart-wrapper">
+                <canvas id="headCanvas"></canvas>
+            </div>
+            <div class="legend-info">
+                <div class="legend-title">图例说明</div>
+                <div class="legend-items">
+                    <div class="legend-item"><span class="legend-color" style="background: #667eea;"></span> {{ baby.name }}的头围</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #4caf50;"></span> 标准中位数 (P50)</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #81c784;"></span> 正常范围 (P15-P85)</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #ff9800;"></span> 偏小/偏大范围 (P3-P15, P85-P97)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="bmi-chart" class="chart-container" style="display: none;">
+            <div class="chart-title">📊 BMI指数曲线</div>
+            <div class="chart-wrapper">
+                <canvas id="bmiCanvas"></canvas>
+            </div>
+            <div class="legend-info">
+                <div class="legend-title">图例说明</div>
+                <div class="legend-items">
+                    <div class="legend-item"><span class="legend-color" style="background: #667eea;"></span> {{ baby.name }}的BMI</div>
+                    <div class="legend-item"><span class="legend-color" style="background: #4caf50;"></span> 正常范围 (15-18)</div>
+                </div>
+                <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                    BMI (体重指数) = 体重(kg) / 身高(m)²<br>
+                    婴幼儿BMI参考范围：15-18 为正常范围
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let chartData = null;
+        let heightChart = null;
+        let weightChart = null;
+        let headChart = null;
+        let bmiChart = null;
+        
+        async function loadChartData() {
+            try {
+                const response = await fetch('/api/growth/{{ baby.id }}');
+                chartData = await response.json();
+                console.log('Chart data loaded:', chartData);
+                
+                if (chartData.records && chartData.records.length > 0) {
+                    createCharts();
+                } else {
+                    showNoDataMessage();
+                }
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+                showNoDataMessage();
+            }
+        }
+        
+        function showNoDataMessage() {
+            const containers = document.querySelectorAll('.chart-container');
+            containers.forEach(container => {
+                const wrapper = container.querySelector('.chart-wrapper');
+                if (wrapper) {
+                    wrapper.innerHTML = `
+                        <div class="no-data">
+                            <h3>还没有成长记录数据</h3>
+                            <p>请先添加成长记录，然后查看成长曲线</p>
+                            <a href="/growth/add/{{ baby.id }}" style="display: inline-block; margin-top: 15px; padding: 10px 25px; background: #667eea; color: white; text-decoration: none; border-radius: 25px; font-weight: bold;">
+                                📏 添加成长记录
+                            </a>
+                        </div>
+                    `;
+                }
+            });
+        }
+        
+        function createCharts() {
+            createHeightChart();
+            createWeightChart();
+            createHeadChart();
+            createBMChart();
+        }
+        
+        function createHeightChart() {
+            const ctx = document.getElementById('heightCanvas').getContext('2d');
+            const babyRecords = chartData.records.filter(r => r.height !== null && r.height !== undefined);
+            const standards = chartData.standards.height;
+            
+            const datasets = [
+                {
+                    label: '{{ baby.name }}的身高',
+                    data: babyRecords.map(r => ({ x: r.age_months, y: r.height })),
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    fill: false,
+                    tension: 0.3
+                },
+                {
+                    label: '标准中位数 (P50)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p50[i] })),
+                    borderColor: '#4caf50',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0
+                },
+                {
+                    label: '正常范围上限 (P85)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p85[i] })),
+                    borderColor: '#81c784',
+                    borderWidth: 1,
+                    borderDash: [3, 3],
+                    fill: '+1',
+                    backgroundColor: 'rgba(129, 199, 132, 0.1)',
+                    pointRadius: 0
+                },
+                {
+                    label: '正常范围下限 (P15)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p15[i] })),
+                    borderColor: '#81c784',
+                    borderWidth: 1,
+                    borderDash: [3, 3],
+                    fill: false,
+                    pointRadius: 0
+                },
+                {
+                    label: '偏高范围上限 (P97)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p97[i] })),
+                    borderColor: '#ff9800',
+                    borderWidth: 1,
+                    borderDash: [2, 2],
+                    fill: false,
+                    pointRadius: 0
+                },
+                {
+                    label: '偏矮范围下限 (P3)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p3[i] })),
+                    borderColor: '#ff9800',
+                    borderWidth: 1,
+                    borderDash: [2, 2],
+                    fill: false,
+                    pointRadius: 0
+                }
+            ];
+            
+            heightChart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toFixed(1) + ' cm';
+                                    }
+                                    if (context.dataset.label === '{{ baby.name }}的身高') {
+                                        const record = babyRecords.find(r => r.age_months === context.parsed.x);
+                                        if (record) {
+                                            label += ` (${record.record_date})`;
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: '月龄 (月)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '身高 (cm)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+        
+        function createWeightChart() {
+            const ctx = document.getElementById('weightCanvas').getContext('2d');
+            const babyRecords = chartData.records.filter(r => r.weight !== null && r.weight !== undefined);
+            const standards = chartData.standards.weight;
+            
+            const datasets = [
+                {
+                    label: '{{ baby.name }}的体重',
+                    data: babyRecords.map(r => ({ x: r.age_months, y: r.weight })),
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    fill: false,
+                    tension: 0.3
+                },
+                {
+                    label: '标准中位数 (P50)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p50[i] })),
+                    borderColor: '#4caf50',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0
+                },
+                {
+                    label: '正常范围上限 (P85)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p85[i] })),
+                    borderColor: '#81c784',
+                    borderWidth: 1,
+                    borderDash: [3, 3],
+                    fill: '+1',
+                    backgroundColor: 'rgba(129, 199, 132, 0.1)',
+                    pointRadius: 0
+                },
+                {
+                    label: '正常范围下限 (P15)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p15[i] })),
+                    borderColor: '#81c784',
+                    borderWidth: 1,
+                    borderDash: [3, 3],
+                    fill: false,
+                    pointRadius: 0
+                },
+                {
+                    label: '偏重范围上限 (P97)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p97[i] })),
+                    borderColor: '#ff9800',
+                    borderWidth: 1,
+                    borderDash: [2, 2],
+                    fill: false,
+                    pointRadius: 0
+                },
+                {
+                    label: '偏轻范围下限 (P3)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p3[i] })),
+                    borderColor: '#ff9800',
+                    borderWidth: 1,
+                    borderDash: [2, 2],
+                    fill: false,
+                    pointRadius: 0
+                }
+            ];
+            
+            weightChart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toFixed(2) + ' kg';
+                                    }
+                                    if (context.dataset.label === '{{ baby.name }}的体重') {
+                                        const record = babyRecords.find(r => r.age_months === context.parsed.x);
+                                        if (record) {
+                                            label += ` (${record.record_date})`;
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: '月龄 (月)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '体重 (kg)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+        
+        function createHeadChart() {
+            const ctx = document.getElementById('headCanvas').getContext('2d');
+            const babyRecords = chartData.records.filter(r => r.head_circumference !== null && r.head_circumference !== undefined);
+            const standards = chartData.standards.head_circumference;
+            
+            if (babyRecords.length === 0) {
+                const wrapper = document.querySelector('#head-chart .chart-wrapper');
+                if (wrapper) {
+                    wrapper.innerHTML = `
+                        <div class="no-data">
+                            <h3>还没有头围记录数据</h3>
+                            <p>请在添加成长记录时同时记录头围数据</p>
+                        </div>
+                    `;
+                }
+                return;
+            }
+            
+            const datasets = [
+                {
+                    label: '{{ baby.name }}的头围',
+                    data: babyRecords.map(r => ({ x: r.age_months, y: r.head_circumference })),
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    fill: false,
+                    tension: 0.3
+                },
+                {
+                    label: '标准中位数 (P50)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p50[i] })),
+                    borderColor: '#4caf50',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0
+                },
+                {
+                    label: '正常范围上限 (P85)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p85[i] })),
+                    borderColor: '#81c784',
+                    borderWidth: 1,
+                    borderDash: [3, 3],
+                    fill: '+1',
+                    backgroundColor: 'rgba(129, 199, 132, 0.1)',
+                    pointRadius: 0
+                },
+                {
+                    label: '正常范围下限 (P15)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p15[i] })),
+                    borderColor: '#81c784',
+                    borderWidth: 1,
+                    borderDash: [3, 3],
+                    fill: false,
+                    pointRadius: 0
+                },
+                {
+                    label: '偏大范围上限 (P97)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p97[i] })),
+                    borderColor: '#ff9800',
+                    borderWidth: 1,
+                    borderDash: [2, 2],
+                    fill: false,
+                    pointRadius: 0
+                },
+                {
+                    label: '偏小范围下限 (P3)',
+                    data: standards.age_months.map((age, i) => ({ x: age, y: standards.p3[i] })),
+                    borderColor: '#ff9800',
+                    borderWidth: 1,
+                    borderDash: [2, 2],
+                    fill: false,
+                    pointRadius: 0
+                }
+            ];
+            
+            headChart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toFixed(1) + ' cm';
+                                    }
+                                    if (context.dataset.label === '{{ baby.name }}的头围') {
+                                        const record = babyRecords.find(r => r.age_months === context.parsed.x);
+                                        if (record) {
+                                            label += ` (${record.record_date})`;
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: '月龄 (月)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '头围 (cm)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+        
+        function createBMChart() {
+            const ctx = document.getElementById('bmiCanvas').getContext('2d');
+            const babyRecords = chartData.records.filter(r => r.bmi !== null && r.bmi !== undefined);
+            
+            if (babyRecords.length === 0) {
+                const wrapper = document.querySelector('#bmi-chart .chart-wrapper');
+                if (wrapper) {
+                    wrapper.innerHTML = `
+                        <div class="no-data">
+                            <h3>还没有足够的记录计算BMI</h3>
+                            <p>BMI需要同时有身高和体重数据才能计算</p>
+                        </div>
+                    `;
+                }
+                return;
+            }
+            
+            const minAge = Math.min(...babyRecords.map(r => r.age_months));
+            const maxAge = Math.max(...babyRecords.map(r => r.age_months));
+            const extendedMin = Math.max(0, minAge - 3);
+            const extendedMax = maxAge + 3;
+            
+            const datasets = [
+                {
+                    label: '{{ baby.name }}的BMI',
+                    data: babyRecords.map(r => ({ x: r.age_months, y: r.bmi })),
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 6,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    fill: false,
+                    tension: 0.3
+                },
+                {
+                    label: '正常范围上限 (18)',
+                    data: [
+                        { x: extendedMin, y: 18 },
+                        { x: extendedMax, y: 18 }
+                    ],
+                    borderColor: '#4caf50',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: '+1',
+                    backgroundColor: 'rgba(76, 175, 80, 0.05)',
+                    pointRadius: 0
+                },
+                {
+                    label: '正常范围下限 (15)',
+                    data: [
+                        { x: extendedMin, y: 15 },
+                        { x: extendedMax, y: 15 }
+                    ],
+                    borderColor: '#4caf50',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0
+                }
+            ];
+            
+            bmiChart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toFixed(2);
+                                    }
+                                    if (context.dataset.label === '{{ baby.name }}的BMI') {
+                                        const record = babyRecords.find(r => r.age_months === context.parsed.x);
+                                        if (record) {
+                                            let status = '';
+                                            if (record.bmi < 15) status = ' (偏瘦)';
+                                            else if (record.bmi > 18) status = ' (偏重)';
+                                            else status = ' (正常)';
+                                            label += status + ` (${record.record_date})`;
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: '月龄 (月)'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'BMI指数'
+                            },
+                            min: 12,
+                            max: 22,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+        
+        document.querySelectorAll('.chart-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                const chartType = this.dataset.chart;
+                document.getElementById('height-chart').style.display = chartType === 'height' ? 'block' : 'none';
+                document.getElementById('weight-chart').style.display = chartType === 'weight' ? 'block' : 'none';
+                document.getElementById('head-chart').style.display = chartType === 'head' ? 'block' : 'none';
+                document.getElementById('bmi-chart').style.display = chartType === 'bmi' ? 'block' : 'none';
+            });
+        });
+        
+        loadChartData();
+    </script>
+</body>
+</html>
