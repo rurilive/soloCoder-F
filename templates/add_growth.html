@@ -142,6 +142,27 @@
             color: #999;
             font-weight: normal;
         }
+        
+        .highlight-field {
+            border-color: #4caf50 !important;
+            background-color: #e8f5e9 !important;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+        }
+        
+        .highlight-label {
+            color: #2e7d32 !important;
+        }
+        
+        .highlight-badge {
+            display: inline-block;
+            background: #4caf50;
+            color: white;
+            font-size: 0.75em;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+            font-weight: normal;
+        }
     </style>
 </head>
 <body>
@@ -193,6 +214,102 @@
     <script>
         // 设置默认日期为今天
         document.getElementById('record_date').valueAsDate = new Date();
+        
+        // 获取 URL 参数
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            const results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+        
+        // 根据类型高亮对应的字段
+        function highlightFieldByType() {
+            const type = getUrlParameter('type');
+            if (!type) return;
+            
+            const typeConfig = {
+                'height': {
+                    label: '身高',
+                    inputId: 'height',
+                    badgeText: '当前关注'
+                },
+                'weight': {
+                    label: '体重',
+                    inputId: 'weight',
+                    badgeText: '当前关注'
+                },
+                'head': {
+                    label: '头围',
+                    inputId: 'head_circumference',
+                    badgeText: '当前关注'
+                },
+                'bmi': {
+                    label: 'BMI',
+                    inputIds: ['weight', 'height'],
+                    badgeText: 'BMI需要',
+                    isBMI: true
+                }
+            };
+            
+            const config = typeConfig[type];
+            if (!config) return;
+            
+            // 更新页面标题
+            const headerTitle = document.querySelector('.header h1');
+            if (headerTitle && config.label) {
+                if (config.isBMI) {
+                    headerTitle.innerHTML = `📊 记录BMI数据`;
+                } else {
+                    headerTitle.innerHTML = `📏 记录${config.label}数据`;
+                }
+            }
+            
+            const headerDesc = document.querySelector('.header p');
+            if (headerDesc && config.label) {
+                if (config.isBMI) {
+                    headerDesc.innerHTML = `为 {{ baby.name }} 记录身高和体重数据以计算BMI`;
+                } else {
+                    headerDesc.innerHTML = `为 {{ baby.name }} 记录${config.label}数据`;
+                }
+            }
+            
+            // 高亮字段
+            if (config.isBMI) {
+                // BMI 需要同时高亮体重和身高
+                config.inputIds.forEach(inputId => {
+                    const input = document.getElementById(inputId);
+                    if (input) {
+                        input.classList.add('highlight-field');
+                        const label = input.closest('.form-group').querySelector('label');
+                        if (label) {
+                            label.classList.add('highlight-label');
+                            const badge = document.createElement('span');
+                            badge.className = 'highlight-badge';
+                            badge.textContent = config.badgeText;
+                            label.appendChild(badge);
+                        }
+                    }
+                });
+            } else {
+                const input = document.getElementById(config.inputId);
+                if (input) {
+                    input.classList.add('highlight-field');
+                    const label = input.closest('.form-group').querySelector('label');
+                    if (label) {
+                        label.classList.add('highlight-label');
+                        const badge = document.createElement('span');
+                        badge.className = 'highlight-badge';
+                        badge.textContent = config.badgeText;
+                        label.appendChild(badge);
+                    }
+                    input.focus();
+                }
+            }
+        }
+        
+        // 页面加载时执行
+        document.addEventListener('DOMContentLoaded', highlightFieldByType);
     </script>
 </body>
 </html>

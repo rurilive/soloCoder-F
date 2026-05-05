@@ -215,7 +215,7 @@
                     </div>
                 </div>
                 <div class="quick-links">
-                    <a href="/growth/add/{{ baby.id }}" class="quick-link-btn">📏 添加成长记录</a>
+                    <a id="add-record-btn" href="/growth/add/{{ baby.id }}?type=height" class="quick-link-btn">📏 添加成长记录</a>
                     <a href="/baby/{{ baby.id }}" class="quick-link-btn">📋 查看详情</a>
                 </div>
             </div>
@@ -909,6 +909,20 @@
                 document.getElementById('weight-chart').style.display = chartType === 'weight' ? 'block' : 'none';
                 document.getElementById('head-chart').style.display = chartType === 'head' ? 'block' : 'none';
                 document.getElementById('bmi-chart').style.display = chartType === 'bmi' ? 'block' : 'none';
+                
+                const addBtn = document.getElementById('add-record-btn');
+                if (addBtn) {
+                    const baseUrl = '/growth/add/{{ baby.id }}';
+                    addBtn.href = `${baseUrl}?type=${chartType}`;
+                    
+                    const typeLabels = {
+                        'height': '身高',
+                        'weight': '体重',
+                        'head': '头围',
+                        'bmi': '成长'
+                    };
+                    addBtn.innerHTML = `📏 添加${typeLabels[chartType] || '成长'}记录`;
+                }
             });
         });
         
