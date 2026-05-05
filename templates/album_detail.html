@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ album.name }} - {{ baby.name }}的相册</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .add-btn {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .add-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .album-info-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .album-info-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .album-title-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .album-icon {
+            font-size: 2.5em;
+        }
+        
+        .album-name-detail {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .album-meta {
+            color: #666;
+            font-size: 0.95em;
+        }
+        
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .photo-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .photo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        .photo-image {
+            height: 200px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        
+        .photo-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .photo-card:hover .photo-image img {
+            transform: scale(1.05);
+        }
+        
+        .photo-info {
+            padding: 15px;
+        }
+        
+        .photo-description {
+            color: #333;
+            font-size: 0.95em;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        
+        .photo-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #999;
+            font-size: 0.85em;
+            margin-bottom: 10px;
+        }
+        
+        .photo-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .tag {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.85em;
+        }
+        
+        .photo-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .delete-btn {
+            flex: 1;
+            background: #ff5252;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .delete-btn:hover {
+            background: #ff1744;
+        }
+        
+        .empty-state {
+            text-align: center;
+            background: white;
+            border-radius: 15px;
+            padding: 60px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .empty-state h2 {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .empty-state p {
+            color: #999;
+            margin-bottom: 30px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        
+        .close-modal:hover {
+            color: #ccc;
+        }
+        
+        .photo-count {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/albums/{{ baby.id }}" class="back-btn">← 返回相册列表</a>
+        
+        <div class="album-info-card">
+            <div class="album-info-top">
+                <div class="album-title-section">
+                    <div class="album-icon">📷</div>
+                    <div>
+                        <div class="album-name-detail">{{ album.name }}</div>
+                        <div class="album-meta">
+                            {% if album.description %}{{ album.description }}{% endif %}
+                            {% if album.description %} | {% endif %}
+                            创建于: {{ album.created_at.strftime('%Y-%m-%d') }}
+                        </div>
+                    </div>
+                </div>
+                <a href="/photo/add/{{ album.id }}" class="add-btn">+ 上传照片</a>
+            </div>
+        </div>
+        
+        {% if photos %}
+        <div class="photo-count">共 {{ photos|length }} 张照片</div>
+        <div class="photo-grid">
+            {% for photo in photos %}
+            <div class="photo-card">
+                <div class="photo-image" onclick="openModal('/{{ photo.file_path }}')">
+                    <img src="/{{ photo.file_path }}" alt="{{ photo.description or '照片' }}">
+                </div>
+                <div class="photo-info">
+                    {% if photo.description %}
+                    <div class="photo-description">{{ photo.description }}</div>
+                    {% endif %}
+                    <div class="photo-meta">
+                        {% if photo.photo_date %}
+                        <span>拍摄于: {{ photo.photo_date }}</span>
+                        {% else %}
+                        <span>上传于: {{ photo.created_at.strftime('%Y-%m-%d') }}</span>
+                        {% endif %}
+                    </div>
+                    {% if photo.tags %}
+                    <div class="photo-tags">
+                        {% for tag in photo.tags.split(',') %}
+                        <span class="tag">{{ tag.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="photo-actions">
+                        <form action="/photo/delete/{{ photo.id }}" method="post" style="flex: 1;" onsubmit="return confirm('确定要删除这张照片吗？')">
+                            <button type="submit" class="delete-btn" style="width: 100%;">删除</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h2>相册还没有照片</h2>
+            <p>点击上方按钮上传第一张照片吧！</p>
+            <a href="/photo/add/{{ album.id }}" class="add-btn">+ 上传照片</a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div id="imageModal" class="modal" onclick="closeModal()">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <img id="modalImage" class="modal-content" src="" alt="放大图片">
+    </div>
+    
+    <script>
+        function openModal(imageSrc) {
+            document.getElementById('modalImage').src = imageSrc;
+            document.getElementById('imageModal').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('imageModal').classList.remove('active');
+        }
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

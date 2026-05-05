@@ -1,5 +1,6 @@
 import os
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, status
+import uuid
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 import math
 
 os.makedirs("static", exist_ok=True)
+os.makedirs("static/photos", exist_ok=True)
 
 SQLALCHEMY_DATABASE_URL = "mysql+pymysql://OnGMpLtFPNHcSbbtI7lu:lsTiBCoLk3cWvQKMZ4Mq@64.83.36.96:53306/cf?charset=utf8mb4"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, echo=False)
@@ -41,6 +43,7 @@ class Baby(Base):
     growth_records = relationship("GrowthRecord", back_populates="baby")
     vaccines = relationship("Vaccine", back_populates="baby")
     milestones = relationship("Milestone", back_populates="baby")
+    albums = relationship("Album", back_populates="baby")
 
 class GrowthRecord(Base):
     __tablename__ = "growth_records"
@@ -98,6 +101,34 @@ class GrowthStandard(Base):
     p85 = Column(Float)
     p97 = Column(Float)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class Album(Base):
+    __tablename__ = "albums"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    baby_id = Column(Integer, ForeignKey("babies.id"))
+    name = Column(String(100))
+    description = Column(Text, nullable=True)
+    cover_photo_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    baby = relationship("Baby", back_populates="albums")
+    photos = relationship("Photo", back_populates="album")
+
+class Photo(Base):
+    __tablename__ = "photos"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    album_id = Column(Integer, ForeignKey("albums.id"))
+    baby_id = Column(Integer, ForeignKey("babies.id"))
+    file_path = Column(String(255))
+    file_name = Column(String(255))
+    description = Column(Text, nullable=True)
+    photo_date = Column(Date, nullable=True)
+    tags = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    album = relationship("Album", back_populates="photos")
 
 Base.metadata.create_all(bind=engine)
 
@@ -541,6 +572,152 @@ async def view_growth_chart(request: Request, baby_id: int, db: Session = Depend
         raise HTTPException(status_code=404, detail="宝宝不存在")
     
     return render_template("growth_chart.html", request=request, baby=baby)
+
+@app.get("/albums/{baby_id}", response_class=HTMLResponse)
+async def view_albums(request: Request, baby_id: int, db: Session = Depends(get_db)):
+    baby = db.query(Baby).filter(Baby.id == baby_id).first()
+    if not baby:
+        raise HTTPException(status_code=404, detail="宝宝不存在")
+    
+    albums = db.query(Album).filter(Album.baby_id == baby_id).order_by(Album.created_at.desc()).all()
+    
+    album_with_photos = []
+    for album in albums:
+        photo_count = db.query(Photo).filter(Photo.album_id == album.id).count()
+        cover_photo = None
+        if album.cover_photo_id:
+            cover_photo = db.query(Photo).filter(Photo.id == album.cover_photo_id).first()
+        if not cover_photo:
+            cover_photo = db.query(Photo).filter(Photo.album_id == album.id).first()
+        
+        album_with_photos.append({
+            "id": album.id,
+            "name": album.name,
+            "description": album.description,
+            "created_at": album.created_at,
+            "photo_count": photo_count,
+            "cover_photo": cover_photo
+        })
+    
+    return render_template("albums.html", request=request, baby=baby, albums=album_with_photos)
+
+@app.get("/album/add/{baby_id}", response_class=HTMLResponse)
+async def add_album_form(request: Request, baby_id: int, db: Session = Depends(get_db)):
+    baby = db.query(Baby).filter(Baby.id == baby_id).first()
+    if not baby:
+        raise HTTPException(status_code=404, detail="宝宝不存在")
+    return render_template("add_album.html", request=request, baby=baby)
+
+@app.post("/album/add/{baby_id}")
+async def add_album(
+    request: Request,
+    baby_id: int,
+    name: str = Form(...),
+    description: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
+    baby = db.query(Baby).filter(Baby.id == baby_id).first()
+    if not baby:
+        raise HTTPException(status_code=404, detail="宝宝不存在")
+    
+    album = Album(
+        baby_id=baby_id,
+        name=name,
+        description=description
+    )
+    db.add(album)
+    db.commit()
+    db.refresh(album)
+    
+    return RedirectResponse(url=f"/albums/{baby_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.get("/album/{album_id}", response_class=HTMLResponse)
+async def view_album(request: Request, album_id: int, db: Session = Depends(get_db)):
+    album = db.query(Album).filter(Album.id == album_id).first()
+    if not album:
+        raise HTTPException(status_code=404, detail="相册不存在")
+    
+    baby = db.query(Baby).filter(Baby.id == album.baby_id).first()
+    photos = db.query(Photo).filter(Photo.album_id == album_id).order_by(Photo.photo_date.desc(), Photo.created_at.desc()).all()
+    
+    return render_template("album_detail.html", request=request, album=album, baby=baby, photos=photos)
+
+@app.get("/photo/add/{album_id}", response_class=HTMLResponse)
+async def add_photo_form(request: Request, album_id: int, db: Session = Depends(get_db)):
+    album = db.query(Album).filter(Album.id == album_id).first()
+    if not album:
+        raise HTTPException(status_code=404, detail="相册不存在")
+    
+    baby = db.query(Baby).filter(Baby.id == album.baby_id).first()
+    return render_template("add_photo.html", request=request, album=album, baby=baby)
+
+@app.post("/photo/add/{album_id}")
+async def add_photo(
+    request: Request,
+    album_id: int,
+    photo: UploadFile = File(...),
+    description: Optional[str] = Form(None),
+    photo_date: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
+    album = db.query(Album).filter(Album.id == album_id).first()
+    if not album:
+        raise HTTPException(status_code=404, detail="相册不存在")
+    
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    if photo.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="只支持JPEG、PNG、GIF、WebP格式的图片")
+    
+    file_extension = os.path.splitext(photo.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join("static/photos", unique_filename)
+    
+    with open(file_path, "wb") as f:
+        content = await photo.read()
+        f.write(content)
+    
+    photo_record = Photo(
+        album_id=album_id,
+        baby_id=album.baby_id,
+        file_path=file_path,
+        file_name=photo.filename,
+        description=description,
+        photo_date=date.fromisoformat(photo_date) if photo_date else None,
+        tags=tags
+    )
+    db.add(photo_record)
+    db.commit()
+    
+    return RedirectResponse(url=f"/album/{album_id}", status_code=status.HTTP_303_SEE_OTHER)
+
+@app.post("/photo/delete/{photo_id}")
+async def delete_photo(photo_id: int, db: Session = Depends(get_db)):
+    photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    if photo:
+        album_id = photo.album_id
+        if os.path.exists(photo.file_path):
+            os.remove(photo.file_path)
+        db.delete(photo)
+        db.commit()
+        return RedirectResponse(url=f"/album/{album_id}", status_code=status.HTTP_303_SEE_OTHER)
+    raise HTTPException(status_code=404, detail="照片不存在")
+
+@app.post("/album/delete/{album_id}")
+async def delete_album(album_id: int, db: Session = Depends(get_db)):
+    album = db.query(Album).filter(Album.id == album_id).first()
+    if album:
+        baby_id = album.baby_id
+        photos = db.query(Photo).filter(Photo.album_id == album_id).all()
+        for photo in photos:
+            if os.path.exists(photo.file_path):
+                os.remove(photo.file_path)
+            db.delete(photo)
+        
+        db.delete(album)
+        db.commit()
+        return RedirectResponse(url=f"/albums/{baby_id}", status_code=status.HTTP_303_SEE_OTHER)
+    raise HTTPException(status_code=404, detail="相册不存在")
 
 if __name__ == "__main__":
     import uvicorn

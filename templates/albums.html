@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ baby.name }}的相册 - 幼儿成长记录系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            color: white;
+            text-decoration: none;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .add-btn {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .add-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .album-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+        
+        .album-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .album-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        .album-cover {
+            height: 200px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .album-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .album-cover-placeholder {
+            font-size: 4em;
+            color: #ccc;
+        }
+        
+        .album-info {
+            padding: 20px;
+        }
+        
+        .album-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .album-description {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        
+        .album-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #999;
+            font-size: 0.9em;
+        }
+        
+        .album-actions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .view-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .view-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .delete-btn {
+            background: #ff5252;
+            color: white;
+        }
+        
+        .delete-btn:hover {
+            background: #ff1744;
+        }
+        
+        .empty-state {
+            text-align: center;
+            background: white;
+            border-radius: 15px;
+            padding: 60px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .empty-state h2 {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .empty-state p {
+            color: #999;
+            margin-bottom: 30px;
+        }
+        
+        .photo-count-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/baby/{{ baby.id }}" class="back-btn">← 返回宝宝详情</a>
+        
+        <div class="header">
+            <h1>📷 {{ baby.name }}的相册</h1>
+            <p>记录宝宝成长的每一个珍贵瞬间</p>
+        </div>
+        
+        <a href="/album/add/{{ baby.id }}" class="add-btn">+ 创建新相册</a>
+        
+        {% if albums %}
+        <div class="album-list">
+            {% for album in albums %}
+            <div class="album-card">
+                <div class="album-cover">
+                    {% if album.cover_photo %}
+                    <img src="/{{ album.cover_photo.file_path }}" alt="{{ album.name }}">
+                    {% else %}
+                    <div class="album-cover-placeholder">📷</div>
+                    {% endif %}
+                    <div class="photo-count-badge">{{ album.photo_count }} 张</div>
+                </div>
+                <div class="album-info">
+                    <div class="album-name">{{ album.name }}</div>
+                    {% if album.description %}
+                    <div class="album-description">{{ album.description }}</div>
+                    {% endif %}
+                    <div class="album-meta">
+                        <span>创建于: {{ album.created_at.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                    <div class="album-actions">
+                        <a href="/album/{{ album.id }}" class="action-btn view-btn">查看相册</a>
+                        <form action="/album/delete/{{ album.id }}" method="post" style="flex: 1;" onsubmit="return confirm('确定要删除这个相册吗？相册中的所有照片也会被删除。')">
+                            <button type="submit" class="action-btn delete-btn" style="width: 100%;">删除相册</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h2>还没有相册</h2>
+            <p>点击上方按钮创建您的第一个相册吧！</p>
+            <a href="/album/add/{{ baby.id }}" class="add-btn">+ 创建新相册</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
